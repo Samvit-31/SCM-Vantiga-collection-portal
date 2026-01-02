@@ -1,0 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Primary Colors */
+    --color-primary: #1e3a8a; /* blue-900 - Deep navy for organizational authority */
+    --color-primary-foreground: #ffffff; /* white - Maximum contrast for accessibility */
+    
+    /* Secondary Colors */
+    --color-secondary: #64748b; /* slate-500 - Professional supporting gray */
+    --color-secondary-foreground: #ffffff; /* white - Clear contrast on secondary */
+    
+    /* Accent Colors */
+    --color-accent: #0ea5e9; /* sky-500 - Vibrant interaction blue */
+    --color-accent-foreground: #ffffff; /* white - High contrast for accent elements */
+    
+    /* Background Colors */
+    --color-background: #f8fafc; /* slate-50 - Clean off-white base */
+    --color-foreground: #0f172a; /* slate-900 - Near-black primary text */
+    
+    /* Surface Colors */
+    --color-card: #ffffff; /* white - Elevated content surfaces */
+    --color-card-foreground: #0f172a; /* slate-900 - Primary text on cards */
+    --color-popover: #ffffff; /* white - Dropdown and modal surfaces */
+    --color-popover-foreground: #0f172a; /* slate-900 - Text in popovers */
+    
+    /* Muted Colors */
+    --color-muted: #f1f5f9; /* slate-100 - Subtle background variation */
+    --color-muted-foreground: #475569; /* slate-600 - Secondary text */
+    
+    /* Border & Input */
+    --color-border: #e2e8f0; /* slate-200 - Minimal border definition */
+    --color-input: #e2e8f0; /* slate-200 - Form input borders */
+    --color-ring: #0ea5e9; /* sky-500 - Focus ring indicator */
+    
+    /* Status Colors */
+    --color-success: #059669; /* emerald-600 - Positive outcomes */
+    --color-success-foreground: #ffffff; /* white - Text on success backgrounds */
+    
+    --color-warning: #d97706; /* amber-600 - Important alerts */
+    --color-warning-foreground: #ffffff; /* white - Text on warning backgrounds */
+    
+    --color-error: #dc2626; /* red-600 - Error states */
+    --color-error-foreground: #ffffff; /* white - Text on error backgrounds */
+    
+    --color-destructive: #dc2626; /* red-600 - Destructive actions */
+    --color-destructive-foreground: #ffffff; /* white - Text on destructive buttons */
+    
+    /* Radius */
+    --radius: 0.5rem; /* 8px - Modern softness */
+  }
+
+  .dark {
+    /* Primary Colors - Dark Mode */
+    --color-primary: #3b82f6; /* blue-500 - Brighter for dark backgrounds */
+    --color-primary-foreground: #ffffff; /* white - Maintained contrast */
+    
+    /* Secondary Colors - Dark Mode */
+    --color-secondary: #475569; /* slate-600 - Adjusted for dark mode */
+    --color-secondary-foreground: #f1f5f9; /* slate-100 - Light text */
+    
+    /* Accent Colors - Dark Mode */
+    --color-accent: #0ea5e9; /* sky-500 - Consistent accent */
+    --color-accent-foreground: #ffffff; /* white - High contrast maintained */
+    
+    /* Background Colors - Dark Mode */
+    --color-background: #0f172a; /* slate-900 - Dark base */
+    --color-foreground: #f8fafc; /* slate-50 - Light text */
+    
+    /* Surface Colors - Dark Mode */
+    --color-card: #1e293b; /* slate-800 - Elevated dark surfaces */
+    --color-card-foreground: #f8fafc; /* slate-50 - Light text on cards */
+    --color-popover: #1e293b; /* slate-800 - Dark popover surfaces */
+    --color-popover-foreground: #f8fafc; /* slate-50 - Light popover text */
+    
+    /* Muted Colors - Dark Mode */
+    --color-muted: #334155; /* slate-700 - Subtle dark variation */
+    --color-muted-foreground: #cbd5e1; /* slate-300 - Muted light text */
+    
+    /* Border & Input - Dark Mode */
+    --color-border: #334155; /* slate-700 - Subtle dark borders */
+    --color-input: #334155; /* slate-700 - Dark input borders */
+    --color-ring: #0ea5e9; /* sky-500 - Consistent focus ring */
+    
+    /* Status Colors - Dark Mode */
+    --color-success: #10b981; /* emerald-500 - Brighter success */
+    --color-success-foreground: #ffffff; /* white - Maintained contrast */
+    
+    --color-warning: #f59e0b; /* amber-500 - Brighter warning */
+    --color-warning-foreground: #ffffff; /* white - Maintained contrast */
+    
+    --color-error: #ef4444; /* red-500 - Brighter error */
+    --color-error-foreground: #ffffff; /* white - Maintained contrast */
+    
+    --color-destructive: #ef4444; /* red-500 - Brighter destructive */
+    --color-destructive-foreground: #ffffff; /* white - Maintained contrast */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .transition-smooth {
+    transition: all 150ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  
+  .transition-medium {
+    transition: all 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+  
+  .elevation-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .elevation-md {
+    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.12);
+  }
+  
+  .elevation-lg {
+    box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.15);
+  }
+}
