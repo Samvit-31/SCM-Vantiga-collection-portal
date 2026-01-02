@@ -1,0 +1,44 @@
+Blr Pratinidhi: Blr@12345
+Blr Treasurer: treasurer.blr
+Office: Tarun@123
+
+Dadar mail: pratinidhi.dadar@scm.test
+Dadar Pratindhi: Dadar@123
+Dadar treasurer mail: treasurer.dadar@scm.test 
+Dadar Treasurer: treasurer.dadar
+
+Thane mail: pratinidhi.thane@scm.test
+Thane Pratindhi: Thane@123
+Thane Treasurer mail: treasurer.thane@scm.test
+Thane Treasurer: treasurer.thane
+
+Grant road mail: pratinidhi.grantroad@scm.test
+Grant Road Pratindhi: GrantRoad@123
+Grant road treasurer: treasurer.grantroad@scm.test
+Grant Road Treasurer: treasurer.grantroad
+
+Pune mail: pratinidhi.pune@scm.test
+Pune Pratindhi: Pune@123
+Pune treasurer mail: treasurer.pune@scm.test
+Pune Treasurer: treasurer.pune
+
+
+
+Cash vantiga payments- receipt to be generated at the same time
+
+
+Roll-out on yugadi- 19th March 2026
+
+How much transferred to SCM Office by the Local Sabhas
+
+Excel download option for the Office and local sabha treasurer
+
+Comparative study based on FY for office as well as PK mam and HH
+
+
+
+in the SCM office dashboard i want an "Export" option for "Overview" page "Sabha comparison" and "All entries" page to the right of the refresh option.
+The export option should let you export in CSV and PDF, for the overview page only PDF is okay.
+It should export the Vanitga Payment Overview — FY 2025-26 the 6 cards of KPIs as a PDF.
+For "Sabha Comparison" page it should download the sabha-wise metrics table.
+And for All Entries page i want the All entries table with all the details in it, all the payers from family, submitted date, acknowledged date and the table column thats already there.
