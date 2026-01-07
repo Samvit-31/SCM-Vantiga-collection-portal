@@ -719,117 +719,6 @@ const NewEntryForm = () => {
             </div>
           )}
 
-          {/* Family Information Section */}
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm ">
-            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
-              <Icon name="Users" size={20} />
-              Family Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Sabha"
-                name="sabha"
-                value={formData?.sabha}
-                onChange={handleInputChange}
-                placeholder="e.g., Bangalore"
-                required
-                error={errors?.sabha}
-              />
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Address <span className="text-destructive">*</span>
-                </label>
-                <textarea
-                  name="address"
-                  value={formData?.address}
-                  onChange={handleInputChange}
-                  placeholder="Enter complete address with multiple lines"
-                  rows={3}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                />
-                {errors?.address && (
-                  <p className="text-sm text-destructive mt-2">{errors?.address}</p>
-                )}
-              </div>
-              <Input
-                label="Mobile Number"
-                name="payerMobile"
-                type="tel"
-                value={formData?.payerMobile}
-                onChange={handleInputChange}
-                placeholder="10-digit mobile number"
-                required
-                error={errors?.payerMobile}
-              />
-              <Input
-                label="Email ID"
-                name="payerEmail"
-                type="email"
-                value={formData?.payerEmail}
-                onChange={handleInputChange}
-                placeholder="email@example.com"
-                required
-                error={errors?.payerEmail}
-              />
-            </div>
-          </div>
-
-          {/* Vantiga Directory Opt-in Options Section */}
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
-              <Icon name="Eye" size={20} />
-              Vantiga Directory Opt-in Options
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Select
-                label="Show Amount in Directory"
-                value={formData?.optShowAmountInDirectory}
-                onChange={(value) => handleSelectChange('optShowAmountInDirectory', value)}
-                options={yesNoOptions}
-              />
-              <Select
-                label="Show Mobile in Directory"
-                value={formData?.optShowMobileInDirectory}
-                onChange={(value) => handleSelectChange('optShowMobileInDirectory', value)}
-                options={yesNoOptions}
-              />
-              <Select
-                label="Show Email in Directory"
-                value={formData?.optShowEmailInDirectory}
-                onChange={(value) => handleSelectChange('optShowEmailInDirectory', value)}
-                options={yesNoOptions}
-              />
-            </div>
-          </div>
-
-          {/* Payment Details Section */}
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
-              <Icon name="CreditCard" size={20} />
-              Payment Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Select
-                label="Payment Mode"
-                value={formData?.paidBy}
-                onChange={(value) => handleSelectChange('paidBy', value)}
-                options={paymentModes}
-                required
-              />
-              {formData?.paidBy !== 'Cash' && (
-                <Input
-                  label="Reference Number"
-                  name="referenceNo"
-                  value={formData?.referenceNo}
-                  onChange={handleInputChange}
-                  placeholder="Enter cheque/transaction reference"
-                  required
-                  error={errors?.referenceNo}
-                />
-              )}
-            </div>
-          </div>
-
           {/* Members Section */}
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -946,6 +835,117 @@ const NewEntryForm = () => {
                   ₹{calculateTotalAmount()?.toFixed(2)}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* Family Information Section */}
+          <div className="bg-card border border-border rounded-lg p-6 shadow-sm ">
+            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
+              <Icon name="Users" size={20} />
+              Family Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Sabha"
+                name="sabha"
+                value={formData?.sabha}
+                onChange={handleInputChange}
+                placeholder="e.g., Bangalore"
+                required
+                error={errors?.sabha}
+              />
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Address <span className="text-destructive">*</span>
+                </label>
+                <textarea
+                  name="address"
+                  value={formData?.address}
+                  onChange={handleInputChange}
+                  placeholder="Enter complete address with multiple lines"
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                />
+                {errors?.address && (
+                  <p className="text-sm text-destructive mt-2">{errors?.address}</p>
+                )}
+              </div>
+              <Input
+                label="Mobile Number"
+                name="payerMobile"
+                type="tel"
+                value={formData?.payerMobile}
+                onChange={handleInputChange}
+                placeholder="10-digit mobile number"
+                required
+                error={errors?.payerMobile}
+              />
+              <Input
+                label="Email ID"
+                name="payerEmail"
+                type="email"
+                value={formData?.payerEmail}
+                onChange={handleInputChange}
+                placeholder="email@example.com"
+                required
+                error={errors?.payerEmail}
+              />
+            </div>
+          </div>
+
+          {/* Payment Details Section */}
+          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
+              <Icon name="CreditCard" size={20} />
+              Payment Details
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Select
+                label="Payment Mode"
+                value={formData?.paidBy}
+                onChange={(value) => handleSelectChange('paidBy', value)}
+                options={paymentModes}
+                required
+              />
+              {formData?.paidBy !== 'Cash' && (
+                <Input
+                  label="Reference Number"
+                  name="referenceNo"
+                  value={formData?.referenceNo}
+                  onChange={handleInputChange}
+                  placeholder="Enter cheque/transaction reference"
+                  required
+                  error={errors?.referenceNo}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Vantiga Directory Opt-in Options Section */}
+          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
+              <Icon name="Eye" size={20} />
+              Vantiga Directory Opt-in Options
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Select
+                label="Show Amount in Directory"
+                value={formData?.optShowAmountInDirectory}
+                onChange={(value) => handleSelectChange('optShowAmountInDirectory', value)}
+                options={yesNoOptions}
+              />
+              <Select
+                label="Show Mobile in Directory"
+                value={formData?.optShowMobileInDirectory}
+                onChange={(value) => handleSelectChange('optShowMobileInDirectory', value)}
+                options={yesNoOptions}
+              />
+              <Select
+                label="Show Email in Directory"
+                value={formData?.optShowEmailInDirectory}
+                onChange={(value) => handleSelectChange('optShowEmailInDirectory', value)}
+                options={yesNoOptions}
+              />
             </div>
           </div>
 

@@ -122,6 +122,8 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
     };
   }, [filteredEntries]);
 
+  const isPratinidhi = userProfile?.role === 'pratinidhi';
+
   // Demographics Chart Data (Age Distribution - Acknowledged only)
   const demographicsData = useMemo(() => {
     const acknowledgedEntries = filteredEntries.filter(e => e?.status === 'ACKNOWLEDGED');
@@ -226,7 +228,7 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
     },
     {
       id: 4,
-      title: 'Total Vantiga Amount Collected',
+      title: 'Total Vantiga Amount Acknowledged',
       value: formatAmount(kpis?.totalVantigaAmountCollected),
       icon: 'IndianRupee',
       color: '#a855f7',
@@ -385,7 +387,7 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
               <>
                 <p className="text-2xl font-bold text-card-foreground">{kpi.families}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Families/Forms: {kpi.families} | Members: {kpi.members}
+                  Families: {kpi.families} | Members: {kpi.members}
                 </p>
               </>
             )}
@@ -394,58 +396,60 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className={isPratinidhi ? "grid grid-cols-1 gap-6 mt-8" : "grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8"}>
         {/* Demographics Chart */}
-        <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-            <Icon name="Users" size={20} />
-            Demographics of Payers
-          </h3>
-          <p className="text-xs text-muted-foreground mb-4">Age distribution (Acknowledged entries only)</p>
+        {!isPratinidhi && (
+          <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
+              <Icon name="Users" size={20} />
+              Demographics of Payers
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">Age distribution (Acknowledged entries only)</p>
 
-          {demographicsData.some(d => d.value > 0) ? (
-            <>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={demographicsData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percentage }) => `${name}: ${percentage}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {demographicsData.map((d, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+            {demographicsData.some(d => d.value > 0) ? (
+              <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={demographicsData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percentage }) => `${name}: ${percentage}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {demographicsData.map((d, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
 
-              <div className="mt-4 space-y-2">
-                {demographicsData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                      <span className="text-foreground">{item.name}</span>
+                <div className="mt-4 space-y-2">
+                  {demographicsData.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                        <span className="text-foreground">{item.name}</span>
+                      </div>
+                      <span className="font-semibold text-foreground">
+                        {item.value} ({item.percentage}%)
+                      </span>
                     </div>
-                    <span className="font-semibold text-foreground">
-                      {item.value} ({item.percentage}%)
-                    </span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                <Icon name="PieChart" size={48} className="mb-3" />
+                <p className="text-sm">No data available for the selected period</p>
               </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <Icon name="PieChart" size={48} className="mb-3" />
-              <p className="text-sm">No data available for the selected period</p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Month-wise Trend Chart */}
         <div className="bg-card rounded-lg border border-border shadow-sm p-6">
@@ -475,54 +479,56 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
       </div>
 
       {/* Payment Mode Distribution Chart */}
-      <div className="bg-card rounded-lg border border-border shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-          <Icon name="CreditCard" size={20} />
-          Mode of Payment Distribution
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">Distribution by payment mode (Acknowledged entries only)</p>
+      {!isPratinidhi && (
+        <div className="bg-card rounded-lg border border-border shadow-sm p-6">
+          <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
+            <Icon name="CreditCard" size={20} />
+            Mode of Payment Distribution
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">Distribution by payment mode (Acknowledged entries only)</p>
 
-        {paymentModeData.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={paymentModeData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${formatAmount(value)}`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {paymentModeData.map((d, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatAmount(value)} />
-              </PieChart>
-            </ResponsiveContainer>
+          {paymentModeData.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={paymentModeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name}: ${formatAmount(value)}`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {paymentModeData.map((d, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => formatAmount(value)} />
+                </PieChart>
+              </ResponsiveContainer>
 
-            <div className="flex flex-col justify-center space-y-3">
-              {paymentModeData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                    <span className="font-medium text-foreground">{item.name}</span>
+              <div className="flex flex-col justify-center space-y-3">
+                {paymentModeData.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                      <span className="font-medium text-foreground">{item.name}</span>
+                    </div>
+                    <span className="font-bold text-foreground">{formatAmount(item.value)}</span>
                   </div>
-                  <span className="font-bold text-foreground">{formatAmount(item.value)}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Icon name="PieChart" size={48} className="mb-3" />
-            <p className="text-sm">No data available for the selected period</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+              <Icon name="PieChart" size={48} className="mb-3" />
+              <p className="text-sm">No data available for the selected period</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recently Acknowledged Entries */}
       {recentlyAcknowledged.length > 0 && (

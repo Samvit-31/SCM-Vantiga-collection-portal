@@ -776,7 +776,7 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
                   Paid By
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
-                  Reference
+                  Transaction Reference ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
                   Status

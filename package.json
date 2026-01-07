@@ -20,9 +20,9 @@
       "postcss"
     ],
     "scripts": [
-      "start",
-      "build",
-      "serve"
+      "start", "vite",
+      "build","vite-build",
+      "serve","vite-preview"
     ],
     "warning": "🚨 CRITICAL: DO NOT REMOVE OR MODIFY ABOVE DEPENDENCIES - Required for app functionality"
   },
