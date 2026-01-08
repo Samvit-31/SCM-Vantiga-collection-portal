@@ -56,6 +56,10 @@ const SabhaDashboard = () => {
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [entriesError, setEntriesError] = useState(null);
+  const [pratinidhiFilter, setPratinidhiFilter] = useState('ALL');
+  const [pratinidhiOptions, setPratinidhiOptions] = useState([
+    { value: 'ALL', label: 'All Pratinidhis' }
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -80,6 +84,7 @@ const SabhaDashboard = () => {
         const ctx = await getUserSabhaContextOrThrow();
         nextProfile = {
           ...profile,
+          user_id: ctx?.userId || profile?.user_id,
           role: ctx?.role || profile?.role,
           sabhaId: ctx?.sabhaId || profile?.sabhaId,
           sabha: ctx?.sabhaName || profile?.sabha,
@@ -137,10 +142,11 @@ const SabhaDashboard = () => {
     setEntriesError(null);
 
     try {
-      const { data, error } = await supabase
+      const userId = userProfile?.user_id || userProfile?.userId || null;
+      let query = supabase
         .from('vantiga_entries')
         .select(`
-          id, fy, status, paid_by, reference_no, receipt_no,
+          id, fy, status, paid_by, reference_no, receipt_no, submitted_by,
           submitted_at, acknowledged_at, rejection_reason,
           sabha_id, family_id,
           families (
@@ -152,8 +158,13 @@ const SabhaDashboard = () => {
           )
         `)
         .eq('sabha_id', userProfile.sabhaId)
-        .eq('fy', selectedFY)
-        .order('submitted_at', { ascending: false });
+        .eq('fy', selectedFY);
+
+      if (userProfile?.role === 'pratinidhi' && userId) {
+        query = query.eq('submitted_by', userId);
+      }
+
+      const { data, error } = await query.order('submitted_at', { ascending: false });
 
       if (error) throw error;
       setEntries(data || []);
@@ -170,6 +181,57 @@ const SabhaDashboard = () => {
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  useEffect(() => {
+    if (userProfile?.role !== 'treasurer') {
+      setPratinidhiFilter('ALL');
+      setPratinidhiOptions([{ value: 'ALL', label: 'All Pratinidhis' }]);
+      return;
+    }
+
+    const ids = Array.from(
+      new Set((entries || [])
+        .map((entry) => entry?.submitted_by || entry?.submittedBy)
+        .filter(Boolean))
+    );
+
+    if (ids.length === 0) {
+      setPratinidhiOptions([{ value: 'ALL', label: 'All Pratinidhis' }]);
+      if (pratinidhiFilter !== 'ALL') setPratinidhiFilter('ALL');
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadPratinidhis = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', ids);
+
+      if (!isMounted) return;
+
+      if (error) {
+        console.warn('Failed to load pratinidhi profiles:', error);
+      }
+
+      const nameById = new Map((data || []).map((row) => [row.user_id, row.full_name]));
+      const options = ids
+        .map((id) => ({ value: id, label: nameById.get(id) || id }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      setPratinidhiOptions([{ value: 'ALL', label: 'All Pratinidhis' }, ...options]);
+      if (pratinidhiFilter !== 'ALL' && !ids.includes(pratinidhiFilter)) {
+        setPratinidhiFilter('ALL');
+      }
+    };
+
+    loadPratinidhis();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [entries, userProfile?.role, pratinidhiFilter]);
 
   useEffect(() => {
     if (!isExportOpen) return;
@@ -353,7 +415,11 @@ const SabhaDashboard = () => {
               userRole={userProfile?.role}
               sabhaId={userProfile?.sabhaId}
               sabhaCode={userProfile?.sabhaCode}
+              currentUserId={userProfile?.user_id || userProfile?.userId}
               onEntriesUpdate={handleEntriesUpdate}
+              pratinidhiFilter={pratinidhiFilter}
+              pratinidhiOptions={pratinidhiOptions}
+              onPratinidhiFilterChange={setPratinidhiFilter}
             />
 
           </>
@@ -365,6 +431,9 @@ const SabhaDashboard = () => {
             selectedFY={selectedFY}
             userProfile={userProfile}
             entries={entries} // ✅ summary uses same supabase-backed entries
+            pratinidhiFilter={pratinidhiFilter}
+            pratinidhiOptions={pratinidhiOptions}
+            onPratinidhiFilterChange={setPratinidhiFilter}
           />
         )}
       </main>

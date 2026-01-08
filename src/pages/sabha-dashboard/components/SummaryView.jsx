@@ -1,17 +1,36 @@
 import React, { useMemo, useImperativeHandle, forwardRef } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Icon from '../../../components/AppIcon';
+import Select from '../../../components/ui/Select';
 
-const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) => {
+const SummaryView = forwardRef(({
+  selectedFY,
+  userProfile,
+  entries = [],
+  pratinidhiFilter = "ALL",
+  pratinidhiOptions = [],
+  onPratinidhiFilterChange,
+}, ref) => {
   // ✅ Robust filter: by FY + sabhaId when available (fallback to sabha name)
   const filteredEntries = useMemo(() => {
     if (!entries || !selectedFY) return [];
 
     const sabhaId = userProfile?.sabhaId || null;
     const sabhaName = userProfile?.sabha || null;
+    const currentUserId = userProfile?.user_id || userProfile?.userId || null;
 
     return entries.filter((entry) => {
       if (entry?.fy !== selectedFY) return false;
+
+      if (userProfile?.role === "treasurer" && pratinidhiFilter && pratinidhiFilter !== "ALL") {
+        const entrySubmittedBy = entry?.submitted_by || entry?.submittedBy || entry?.submittedByUserId;
+        if (entrySubmittedBy !== pratinidhiFilter) return false;
+      }
+
+      if (userProfile?.role === "pratinidhi" && currentUserId) {
+        const entrySubmittedBy = entry?.submitted_by || entry?.submittedBy || entry?.submittedByUserId;
+        if (entrySubmittedBy !== currentUserId) return false;
+      }
 
       // Prefer sabhaId filtering
       if (sabhaId) {
@@ -26,7 +45,7 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
 
       return true;
     });
-  }, [entries, selectedFY, userProfile]);
+  }, [entries, selectedFY, userProfile, pratinidhiFilter]);
 
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -368,6 +387,25 @@ const SummaryView = forwardRef(({ selectedFY, userProfile, entries = [] }, ref) 
           </p>
         </div>
       </div>
+
+      {userProfile?.role === "treasurer" && (
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Icon name="Users" size={18} />
+              Pratinidhi
+            </div>
+            <div className="w-full sm:w-64">
+              <Select
+                value={pratinidhiFilter}
+                onChange={(value) => onPratinidhiFilterChange?.(value)}
+                options={pratinidhiOptions?.length ? pratinidhiOptions : [{ value: "ALL", label: "All Pratinidhis" }]}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

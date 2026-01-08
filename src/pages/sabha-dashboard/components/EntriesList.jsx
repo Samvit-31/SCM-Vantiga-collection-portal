@@ -28,7 +28,17 @@ const getStatusColor = (status) => {
   }
 };
 
-const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEntriesUpdate }, ref) => {
+const EntriesList = forwardRef(({
+  selectedFY,
+  sabhaId,
+  sabhaCode,
+  userRole,
+  currentUserId,
+  onEntriesUpdate,
+  pratinidhiFilter = "ALL",
+  pratinidhiOptions = [],
+  onPratinidhiFilterChange,
+}, ref) => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,6 +54,16 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const effectiveUserId = useMemo(() => {
+    if (currentUserId) return currentUserId;
+    try {
+      const p = JSON.parse(localStorage.getItem("userProfile") || "{}");
+      return p?.user_id || p?.userId || null;
+    } catch {
+      return null;
+    }
+  }, [currentUserId]);
 
   // Fallback sabhaCode from localStorage profile if not provided
   const effectiveSabhaCode = useMemo(() => {
@@ -109,7 +129,8 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
     setEntriesError(null);
 
     try {
-      const rows = await fetchEntriesForSabhaFY({ sabhaId, fy: selectedFY });
+      const submittedBy = userRole === "pratinidhi" ? effectiveUserId : null;
+      const rows = await fetchEntriesForSabhaFY({ sabhaId, fy: selectedFY, submittedBy });
       const mapped = mapRowsToUI(rows);
       setEntries(mapped);
     } catch (e) {
@@ -119,7 +140,7 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
     } finally {
       setLoadingEntries(false);
     }
-  }, [sabhaId, selectedFY, mapRowsToUI]);
+  }, [sabhaId, selectedFY, mapRowsToUI, userRole, effectiveUserId]);
 
   // Load whenever sabhaId/FY changes
   useEffect(() => {
@@ -253,6 +274,16 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
       .filter((entry) => {
         if (entry?.fy !== selectedFY) return false;
 
+        if (userRole === "treasurer" && pratinidhiFilter && pratinidhiFilter !== "ALL") {
+          const entrySubmittedBy = entry?.submittedBy || entry?.submitted_by;
+          if (entrySubmittedBy !== pratinidhiFilter) return false;
+        }
+
+        if (userRole === "pratinidhi" && effectiveUserId) {
+          const entrySubmittedBy = entry?.submittedBy || entry?.submitted_by;
+          if (entrySubmittedBy !== effectiveUserId) return false;
+        }
+
         const primaryName =
           entry?.members?.find((m) => m.isPrimaryPayer)?.name ||
           entry?.members?.[0]?.name ||
@@ -269,7 +300,7 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
         return true;
       })
       .sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate));
-  }, [selectedFY, searchQuery, statusFilter, entries]);
+  }, [selectedFY, searchQuery, statusFilter, entries, userRole, pratinidhiFilter, effectiveUserId]);
 
   // ✅ NEW: member-wise export rows (respects filters)
   const memberWiseRowsForExport = useMemo(() => {
@@ -732,6 +763,16 @@ const EntriesList = forwardRef(({ selectedFY, sabhaId, sabhaCode, userRole, onEn
               className="w-full"
             />
           </div>
+          {userRole === "treasurer" && (
+            <div className="w-full sm:w-56">
+              <Select
+                value={pratinidhiFilter}
+                onChange={(value) => onPratinidhiFilterChange?.(value)}
+                options={pratinidhiOptions?.length ? pratinidhiOptions : [{ value: "ALL", label: "All Pratinidhis" }]}
+                className="w-full"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-3 flex items-center justify-between text-sm">

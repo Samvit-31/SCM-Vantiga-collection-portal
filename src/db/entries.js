@@ -9,8 +9,8 @@ export function getTotalAmount(entry) {
   return members.reduce((sum, m) => sum + Number(m.amount || 0), 0);
 }
 
-export async function fetchEntriesForSabhaFY({ sabhaId, fy }) {
-  const { data, error } = await supabase
+export async function fetchEntriesForSabhaFY({ sabhaId, fy, submittedBy }) {
+  let query = supabase
     .from("vantiga_entries")
     .select(`
       id, fy, status, paid_by, reference_no, receipt_no, submitted_by,
@@ -29,8 +29,13 @@ export async function fetchEntriesForSabhaFY({ sabhaId, fy }) {
       )
     `)
     .eq("sabha_id", sabhaId)
-    .eq("fy", fy)
-    .order("submitted_at", { ascending: false });
+    .eq("fy", fy);
+
+  if (submittedBy) {
+    query = query.eq("submitted_by", submittedBy);
+  }
+
+  const { data, error } = await query.order("submitted_at", { ascending: false });
 
   if (error) {
     console.error("Error fetching entries", error);
