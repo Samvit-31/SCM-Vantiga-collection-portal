@@ -22,7 +22,7 @@ const Routes = () => {
         <Route path="/scm-office-dashboard" element={<ScmOfficeDashboard />} />
         <Route path="/receipt-preview" element={<ReceiptPreview />} />
         <Route path="/new-entry-form" element={<NewEntryForm />} />
-        <Route path="*" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </RouterRoutes>
       </ErrorBoundary>
     </BrowserRouter>
