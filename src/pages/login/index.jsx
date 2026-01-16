@@ -248,6 +248,7 @@ const Login = () => {
                 ? 'Enter your email to receive reset instructions'
                 : 'Sign in to access your dashboard'}
             </p>
+            {!showForgotPassword }
           </div>
 
           {!showForgotPassword ? (

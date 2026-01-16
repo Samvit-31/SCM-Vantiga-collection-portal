@@ -7,6 +7,7 @@ import CommonHeader from '../../components/ui/CommonHeader';
 import OverviewTab from './components/OverviewTab';
 import SabhaComparisonTab from './components/SabhaComparisonTab';
 import AllEntriesTab from './components/AllEntriesTab';
+import OfficeRemittancesTab from './components/OfficeRemittancesTab';
 
 // ✅ ADD THIS:
 import SummaryTab from './components/SummaryTab';
@@ -165,6 +166,16 @@ const ScmOfficeDashboard = () => {
             >
               All Entries
             </button>
+            <button
+              onClick={() => setActiveTab('remittances')}
+              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                activeTab === 'remittances'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Remittances
+            </button>
           </div>
         </div>
       </div>
@@ -185,6 +196,10 @@ const ScmOfficeDashboard = () => {
 
         {activeTab === 'all-entries' && (
           <AllEntriesTab selectedFY={selectedFY} />
+        )}
+
+        {activeTab === 'remittances' && (
+          <OfficeRemittancesTab selectedFY={selectedFY} userProfile={userProfile} />
         )}
       </main>
     </div>

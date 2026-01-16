@@ -6,6 +6,7 @@ import Icon from '../../components/AppIcon';
 import CommonHeader from '../../components/ui/CommonHeader';
 import EntriesList from './components/EntriesList';
 import SummaryView from './components/SummaryView';
+import RemittancesTab from './components/RemittancesTab';
 
 // ✅ adjust import path to where your client lives
 import { supabase } from '../../supabaseClient';
@@ -107,6 +108,12 @@ const SabhaDashboard = () => {
       isMounted = false;
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (userProfile?.role !== 'treasurer' && activeTab === 'remittances') {
+      setActiveTab('entries');
+    }
+  }, [userProfile?.role, activeTab]);
 
   const fyOptions = [
     { value: '2023-24', label: '2023-24' },
@@ -354,6 +361,18 @@ const SabhaDashboard = () => {
               >
                 Summary
               </button>
+              {userProfile?.role === 'treasurer' && (
+                <button
+                  onClick={() => setActiveTab('remittances')}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    activeTab === 'remittances'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Remittances
+                </button>
+              )}
             </div>
 
             {userProfile?.role === 'pratinidhi' && (
@@ -435,6 +454,10 @@ const SabhaDashboard = () => {
             pratinidhiOptions={pratinidhiOptions}
             onPratinidhiFilterChange={setPratinidhiFilter}
           />
+        )}
+
+        {activeTab === 'remittances' && userProfile?.role === 'treasurer' && (
+          <RemittancesTab selectedFY={selectedFY} userProfile={userProfile} />
         )}
       </main>
     </div>
