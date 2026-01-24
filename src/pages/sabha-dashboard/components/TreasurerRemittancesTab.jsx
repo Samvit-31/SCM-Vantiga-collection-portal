@@ -69,7 +69,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
 
     try {
       const { data, error } = await supabase
-        .from("remittances")
+        .from("sabha_remittances")
         .select(`
           id, sabha_id, fy, remitted_amount, remitted_at, remittance_mode,
           reference_no, bank_name, remarks, status, verified_at, rejection_reason
@@ -96,7 +96,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
   useEffect(() => {
     if (!sabhaId || !selectedFY) return;
 
-    const channel = supabase.channel(`remittances_${sabhaId}`);
+    const channel = supabase.channel(`sabha_remittances_${sabhaId}`);
 
     channel
       .on(
@@ -104,7 +104,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
         {
           event: "*",
           schema: "public",
-          table: "remittances",
+          table: "sabha_remittances",
           filter: `sabha_id=eq.${sabhaId}`
         },
         (payload) => {
@@ -200,7 +200,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
         created_by: userId
       };
 
-      const { error } = await supabase.from("remittances").insert(payload);
+      const { error } = await supabase.from("sabha_remittances").insert(payload);
       if (error) throw error;
 
       setFormData({

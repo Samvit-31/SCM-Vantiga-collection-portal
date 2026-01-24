@@ -52,6 +52,7 @@ const NewEntryForm = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const MAX_ADDITIONAL_MEMBERS = 4;
 
   // Form state - removed familyId, updated opt-in defaults to "Yes"
   const [formData, setFormData] = useState({
@@ -373,6 +374,10 @@ const NewEntryForm = () => {
   };
 
   const addMember = () => {
+    const additionalMembersCount = Math.max(members?.length - 1, 0);
+    if (additionalMembersCount >= MAX_ADDITIONAL_MEMBERS) {
+      return;
+    }
     const member1Gotra = members?.[0]?.gotra || '';
     const newMember = {
       id: members?.length + 1,
@@ -721,22 +726,34 @@ const NewEntryForm = () => {
 
           {/* Members Section */}
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
                 <Icon name="UserPlus" size={20} />
                 Family Members
               </h2>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addMember}
-                iconName="Plus"
-                iconPosition="left"
-              >
-                Add Member
-              </Button>
+              <div className="flex flex-col items-end gap-2 text-right">
+                <span className="text-xs text-muted-foreground">
+                  Members: {members?.length || 1} / {MAX_ADDITIONAL_MEMBERS + 1} recommended
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addMember}
+                  iconName="Plus"
+                  iconPosition="left"
+                  disabled={Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS}
+                >
+                  Add Member
+                </Button>
+              </div>
             </div>
+            {Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS && (
+              <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                You’ve reached the recommended limit of 5 members (Self + 4). If you need to add more, please
+                contact your treasurer.
+              </div>
+            )}
 
             <div className="space-y-6">
               {members?.map((member, index) => (

@@ -76,6 +76,28 @@ const EntriesList = forwardRef(({
     }
   }, [sabhaCode]);
 
+  const pratinidhiNameById = useMemo(() => {
+    return new Map(
+      (pratinidhiOptions || [])
+        .filter((opt) => opt?.value && opt.value !== "ALL")
+        .map((opt) => [opt.value, opt.label])
+    );
+  }, [pratinidhiOptions]);
+
+  const resolvePratinidhiName = useCallback((entry) => {
+    const direct =
+      entry?.pratinidhi_name ||
+      entry?.pratinidhi ||
+      entry?.collected_by ||
+      entry?.representative_name;
+    if (direct) return direct;
+    const submittedBy = entry?.submittedBy || entry?.submitted_by;
+    if (submittedBy && pratinidhiNameById.has(submittedBy)) {
+      return pratinidhiNameById.get(submittedBy);
+    }
+    return submittedBy || "-";
+  }, [pratinidhiNameById]);
+
   // Notify parent of entries changes
   useEffect(() => {
     if (onEntriesUpdate) onEntriesUpdate(entries);
@@ -315,10 +337,13 @@ const EntriesList = forwardRef(({
         "Unknown";
 
       // If no members, still export one row
+      const pratinidhiName = resolvePratinidhiName(entry);
+
       if (!members.length) {
         return [{
           submittedDate: entry?.submittedDate,
           acknowledgedDate: entry?.acknowledgedDate,
+          pratinidhiName,
           payerName,
           memberName: "",
           memberAge: "",
@@ -337,6 +362,7 @@ const EntriesList = forwardRef(({
       return members.map((m) => ({
         submittedDate: entry?.submittedDate,
         acknowledgedDate: entry?.acknowledgedDate,
+        pratinidhiName,
         payerName,
         memberName: m?.name || "",
         memberAge: m?.age ?? "",
@@ -351,7 +377,7 @@ const EntriesList = forwardRef(({
         receiptNo: entry?.receiptNo || ""
       }));
     });
-  }, [filteredEntries]);
+  }, [filteredEntries, resolvePratinidhiName]);
 
   const handleRowClick = (entry) => {
     setSelectedEntry(entry);
@@ -446,6 +472,7 @@ const EntriesList = forwardRef(({
   const exportEntriesCsv = () => {
     const headers = [
       "Submitted Date",
+      "Pratinidhi",
       "Acknowledged Date",
       "Payer Name (Primary)",
       "Member Name",
@@ -463,6 +490,7 @@ const EntriesList = forwardRef(({
 
     const rows = memberWiseRowsForExport.map((r) => [
       formatDate(r.submittedDate),
+      r.pratinidhiName,
       formatDate(r.acknowledgedDate),
       r.payerName,
       r.memberName || "-",
@@ -486,6 +514,7 @@ const EntriesList = forwardRef(({
     const rowsHtml = memberWiseRowsForExport.map((r) => `
       <tr>
         <td class="nowrap">${escapeHtml(formatDate(r.submittedDate))}</td>
+        <td>${escapeHtml(r.pratinidhiName || "-")}</td>
         <td class="nowrap">${escapeHtml(formatDate(r.acknowledgedDate))}</td>
         <td>${escapeHtml(r.payerName)}</td>
         <td>${escapeHtml(r.memberName || "-")}</td>
@@ -509,6 +538,7 @@ const EntriesList = forwardRef(({
         <thead>
           <tr>
             <th>Submitted Date</th>
+            <th>Pratinidhi</th>
             <th>Acknowledged Date</th>
             <th>Payer Name</th>
             <th>Member Name</th>
@@ -525,7 +555,7 @@ const EntriesList = forwardRef(({
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml || '<tr><td colspan="14">No data</td></tr>'}
+          ${rowsHtml || '<tr><td colspan="15">No data</td></tr>'}
         </tbody>
       </table>
     `;
@@ -808,6 +838,9 @@ const EntriesList = forwardRef(({
                   Submitted Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
+                  Pratinidhi
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
                   Payer Name
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
@@ -836,6 +869,7 @@ const EntriesList = forwardRef(({
                   entry?.members?.find((m) => m.isPrimaryPayer)?.name ||
                   entry?.members?.[0]?.name ||
                   "Unknown";
+                const pratinidhiName = resolvePratinidhiName(entry);
 
                 return (
                   <tr
@@ -845,6 +879,9 @@ const EntriesList = forwardRef(({
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {formatDate(entry?.submittedDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                      {pratinidhiName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {payerName}

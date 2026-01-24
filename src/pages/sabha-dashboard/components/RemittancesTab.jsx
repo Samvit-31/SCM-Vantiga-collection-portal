@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useImperativeHandle,
+  forwardRef
+} from "react";
 import toast, { Toaster } from "react-hot-toast";
 import Input from "../../../components/ui/Input";
 import Select from "../../../components/ui/Select";
@@ -37,7 +44,77 @@ const formatAmount = (amount) => {
   }).format(Number(amount || 0));
 };
 
-const RemittancesTab = ({ selectedFY, userProfile }) => {
+const escapeHtml = (value) => {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+const downloadCsv = (headers, rows, filename) => {
+  const toCsvValue = (value) => {
+    const text = String(value ?? "");
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+
+  const csv = [headers, ...rows]
+    .map((row) => row.map(toCsvValue).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+  if (window.navigator?.msSaveOrOpenBlob) {
+    window.navigator.msSaveOrOpenBlob(blob, filename);
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 0);
+};
+
+const openPrintWindow = (title, bodyHtml) => {
+  const printWindow = window.open("", "_blank", "width=1200,height=900");
+  if (!printWindow) return;
+
+  printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      @page { size: A4 landscape; margin: 12mm; }
+      body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      h1 { font-size: 18px; margin: 0 0 6px; }
+      p { margin: 0 0 12px; color: #475569; font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; font-size: 10px; }
+      th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; vertical-align: top; }
+      th { background: #f1f5f9; text-transform: uppercase; letter-spacing: 0.02em; }
+      .right { text-align: right; }
+    </style>
+  </head>
+  <body>
+    ${bodyHtml}
+  </body>
+</html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => {
+    printWindow.print();
+    printWindow.onafterprint = () => printWindow.close();
+  };
+};
+
+const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
   const sabhaId = userProfile?.sabhaId;
   const [remittances, setRemittances] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -66,7 +143,7 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
         .from("sabha_remittances")
         .select(`
           id, sabha_id, fy, remitted_amount, remitted_at, remittance_mode,
-          reference_no, status, verified_at, rejection_reason
+          reference_no, bank_name, status, verified_at, rejection_reason
         `)
         .eq("sabha_id", sabhaId)
         .eq("fy", selectedFY)
@@ -178,6 +255,8 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
   const validateForm = () => {
     const nextErrors = {};
     const amountValue = Number(formData?.remittedAmount || 0);
+    const referenceValue = formData?.referenceNo?.trim();
+    const bankValue = formData?.bankName?.trim();
 
     if (!formData?.remittedAt) {
       nextErrors.remittedAt = "Date is required";
@@ -188,6 +267,12 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
     if (!formData?.remittanceMode) {
       nextErrors.remittanceMode = "Mode is required";
     }
+    if (!referenceValue) {
+      nextErrors.referenceNo = "Reference no is required";
+    }
+    if (!bankValue) {
+      nextErrors.bankName = "Bank name is required";
+    }
 
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -195,7 +280,10 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
 
   const handleSubmit = async (event) => {
     event?.preventDefault();
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      toast.error("Please fill all required fields.");
+      return;
+    }
     if (!sabhaId) {
       toast.error("Sabha mapping missing. Please re-login.");
       return;
@@ -210,14 +298,16 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
       if (!userId) throw new Error("No active session. Please login again.");
 
       const remittedAtIso = new Date(`${formData.remittedAt}T00:00:00`).toISOString();
+      const referenceValue = formData.referenceNo?.trim();
+      const bankValue = formData.bankName?.trim();
       const payload = {
         sabha_id: sabhaId,
         fy: selectedFY,
         remitted_at: remittedAtIso,
         remitted_amount: Number(formData?.remittedAmount || 0),
         remittance_mode: formData.remittanceMode,
-        reference_no: formData.referenceNo?.trim() || null,
-        bank_name: formData.bankName?.trim() || null,
+        reference_no: referenceValue,
+        bank_name: bankValue,
         remarks: formData.remarks?.trim() || null,
         status: "SUBMITTED",
         created_by: userId
@@ -244,6 +334,65 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
       setIsSubmitting(false);
     }
   };
+
+  const handleExportCsv = () => {
+    const headers = ["Date", "Amount", "Mode", "Bank Name", "Ref No", "Status", "Verified On"];
+    const rows = (remittances || []).map((row) => [
+      formatDate(row?.remitted_at),
+      Number(row?.remitted_amount || 0),
+      row?.remittance_mode || "",
+      row?.bank_name || row?.bankName || "",
+      row?.reference_no || "",
+      row?.status || "",
+      row?.verified_at ? formatDate(row?.verified_at) : ""
+    ]);
+
+    downloadCsv(headers, rows, `sabha-remittances-ledger-${selectedFY}.csv`);
+  };
+
+  const handleExportPdf = () => {
+    const rowsHtml = (remittances || [])
+      .map((row) => `
+        <tr>
+          <td>${escapeHtml(formatDate(row?.remitted_at))}</td>
+          <td class="right">${escapeHtml(formatAmount(row?.remitted_amount))}</td>
+          <td>${escapeHtml(row?.remittance_mode || "")}</td>
+          <td>${escapeHtml(row?.bank_name || row?.bankName || "")}</td>
+          <td>${escapeHtml(row?.reference_no || "")}</td>
+          <td>${escapeHtml(row?.status || "")}</td>
+          <td>${escapeHtml(row?.verified_at ? formatDate(row?.verified_at) : "")}</td>
+        </tr>
+      `)
+      .join("");
+
+    const bodyHtml = `
+      <h1>Remittances Ledger - FY ${escapeHtml(selectedFY)}</h1>
+      <p>Rows exported: ${(remittances || []).length}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Remitted Date</th>
+            <th class="right">Amount</th>
+            <th>Mode</th>
+            <th>Bank Name</th>
+            <th>Ref No</th>
+            <th>Status</th>
+            <th>Verified On</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || '<tr><td colspan="7">No data</td></tr>'}
+        </tbody>
+      </table>
+    `;
+
+    openPrintWindow(`Remittances Ledger - FY ${selectedFY}`, bodyHtml);
+  };
+
+  useImperativeHandle(ref, () => ({
+    exportRemittancesCsv: handleExportCsv,
+    exportRemittancesPdf: handleExportPdf
+  }));
 
   if (!sabhaId) {
     return (
@@ -355,16 +504,20 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               label="Reference No"
-              placeholder="Optional"
+              placeholder="Enter reference no"
               value={formData.referenceNo}
               onChange={(e) => handleFieldChange("referenceNo", e?.target?.value)}
+              error={fieldErrors.referenceNo}
+              required
               disabled={isSubmitting}
             />
             <Input
               label="Bank Name"
-              placeholder="Optional"
+              placeholder="Enter bank name"
               value={formData.bankName}
               onChange={(e) => handleFieldChange("bankName", e?.target?.value)}
+              error={fieldErrors.bankName}
+              required
               disabled={isSubmitting}
             />
           </div>
@@ -430,6 +583,9 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
                     Mode
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
+                    Bank Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
                     Ref No
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
@@ -453,6 +609,9 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                         {row?.remittance_mode || "-"}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                        {row?.bank_name || row?.bankName || "-"}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                         {row?.reference_no || "-"}
                       </td>
@@ -465,7 +624,7 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
                     </tr>
                     {row?.status === "REJECTED" && (
                       <tr className="bg-red-50/40">
-                        <td colSpan={6} className="px-6 py-3 text-sm text-red-700">
+                        <td colSpan={7} className="px-6 py-3 text-sm text-red-700">
                           Rejection reason: {row?.rejection_reason || "No reason provided"}
                         </td>
                       </tr>
@@ -488,6 +647,6 @@ const RemittancesTab = ({ selectedFY, userProfile }) => {
 
     </div>
   );
-};
+});
 
 export default RemittancesTab;

@@ -48,11 +48,15 @@ const SabhaDashboard = () => {
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState(null);
   const [selectedFY, setSelectedFY] = useState('2025-26');
+  const [summaryMode, setSummaryMode] = useState('single');
+  const [summaryFYs, setSummaryFYs] = useState(['2025-26']);
+  const [compareFYError, setCompareFYError] = useState('');
   const [activeTab, setActiveTab] = useState('entries');
   const [isExportOpen, setIsExportOpen] = useState(false);
   const exportRef = useRef(null);
   const entriesExportRef = useRef(null);
   const summaryExportRef = useRef(null);
+  const remittancesExportRef = useRef(null);
 
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
@@ -123,6 +127,31 @@ const SabhaDashboard = () => {
 
   const handleFYChange = (value) => setSelectedFY(value);
 
+  const normalizeFYOrder = (values) => {
+    const order = fyOptions.map((opt) => opt.value);
+    return [...new Set(values)].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  };
+
+  const handleSummaryFYChange = (values) => {
+    const nextValues = normalizeFYOrder(values || []);
+    if (nextValues.length > 3) {
+      setCompareFYError('You can compare up to 3 FYs only.');
+      return;
+    }
+    setCompareFYError('');
+    setSummaryFYs(nextValues);
+  };
+
+  const handleSummaryModeChange = (mode) => {
+    setSummaryMode(mode);
+    setCompareFYError('');
+    if (mode === 'single') {
+      setSummaryFYs([selectedFY]);
+    } else if (summaryFYs.length === 0) {
+      setSummaryFYs([selectedFY]);
+    }
+  };
+
   const handleNewEntry = () => {
     navigate('/new-entry-form');
   };
@@ -133,17 +162,36 @@ const SabhaDashboard = () => {
       entriesExportRef.current?.exportEntriesPdf?.();
       return;
     }
+    if (activeTab === 'remittances') {
+      remittancesExportRef.current?.exportRemittancesPdf?.();
+      return;
+    }
     summaryExportRef.current?.exportSummaryPdf?.();
   };
 
   const handleExportCsv = () => {
     setIsExportOpen(false);
-    entriesExportRef.current?.exportEntriesCsv?.();
+    if (activeTab === 'entries') {
+      entriesExportRef.current?.exportEntriesCsv?.();
+      return;
+    }
+    if (activeTab === 'remittances') {
+      remittancesExportRef.current?.exportRemittancesCsv?.();
+      return;
+    }
+    summaryExportRef.current?.exportSummaryCsv?.();
   };
 
   // ✅ Fetch entries from Supabase (single source of truth)
   const fetchEntries = useCallback(async () => {
-    if (!userProfile?.sabhaId || !selectedFY) return;
+    if (!userProfile?.sabhaId) return;
+
+    const fyList =
+      activeTab === 'summary' && summaryMode === 'compare'
+        ? summaryFYs
+        : [selectedFY];
+
+    if (!fyList?.length) return;
 
     setLoadingEntries(true);
     setEntriesError(null);
@@ -165,7 +213,7 @@ const SabhaDashboard = () => {
           )
         `)
         .eq('sabha_id', userProfile.sabhaId)
-        .eq('fy', selectedFY);
+        .in('fy', fyList);
 
       if (userProfile?.role === 'pratinidhi' && userId) {
         query = query.eq('submitted_by', userId);
@@ -182,12 +230,18 @@ const SabhaDashboard = () => {
     } finally {
       setLoadingEntries(false);
     }
-  }, [userProfile?.sabhaId, selectedFY]);
+  }, [userProfile?.sabhaId, selectedFY, summaryMode, summaryFYs, activeTab]);
 
   // Load entries on FY/sabha change
   useEffect(() => {
     fetchEntries();
   }, [fetchEntries]);
+
+  useEffect(() => {
+    if (summaryMode === 'single') {
+      setSummaryFYs([selectedFY]);
+    }
+  }, [selectedFY, summaryMode]);
 
   useEffect(() => {
     if (userProfile?.role !== 'treasurer') {
@@ -196,8 +250,13 @@ const SabhaDashboard = () => {
       return;
     }
 
+    const scopedEntries =
+      activeTab === 'summary' && summaryMode === 'compare'
+        ? entries
+        : (entries || []).filter((entry) => entry?.fy === selectedFY);
+
     const ids = Array.from(
-      new Set((entries || [])
+      new Set((scopedEntries || [])
         .map((entry) => entry?.submitted_by || entry?.submittedBy)
         .filter(Boolean))
     );
@@ -238,7 +297,7 @@ const SabhaDashboard = () => {
     return () => {
       isMounted = false;
     };
-  }, [entries, userProfile?.role, pratinidhiFilter]);
+  }, [entries, userProfile?.role, pratinidhiFilter, selectedFY, summaryMode, summaryFYs, activeTab]);
 
   useEffect(() => {
     if (!isExportOpen) return;
@@ -253,9 +312,16 @@ const SabhaDashboard = () => {
 
   // ✅ Realtime: auto-refresh list when entries change
   useEffect(() => {
-    if (!userProfile?.sabhaId || !selectedFY) return;
+    if (!userProfile?.sabhaId) return;
 
-    const channel = supabase.channel(`vantiga_entries_${userProfile.sabhaId}_${selectedFY}`);
+    const fyList =
+      activeTab === 'summary' && summaryMode === 'compare'
+        ? summaryFYs
+        : [selectedFY];
+
+    if (!fyList?.length) return;
+
+    const channel = supabase.channel(`vantiga_entries_${userProfile.sabhaId}_${fyList.join('_')}`);
 
     channel
       .on(
@@ -272,8 +338,8 @@ const SabhaDashboard = () => {
           const oldRow = payload?.old;
 
           const fyChangedOrMatches =
-            (newRow && newRow.fy === selectedFY) ||
-            (oldRow && oldRow.fy === selectedFY);
+            (newRow && fyList.includes(newRow.fy)) ||
+            (oldRow && fyList.includes(oldRow.fy));
 
           if (fyChangedOrMatches) {
             fetchEntries();
@@ -285,7 +351,7 @@ const SabhaDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.sabhaId, selectedFY, fetchEntries]);
+  }, [userProfile?.sabhaId, selectedFY, summaryMode, summaryFYs, activeTab, fetchEntries]);
 
   // Keep parent entries in sync if child updates (optional)
   const handleEntriesUpdate = (updatedEntries) => {
@@ -297,6 +363,10 @@ const SabhaDashboard = () => {
   if (userProfile?.sabha) sabhaLineParts.push(userProfile.sabha);
   sabhaLineParts.push(roleLabel);
   const sabhaLine = sabhaLineParts.join(' • ');
+  const isSummaryTab = activeTab === 'summary' && userProfile?.role === 'treasurer';
+  const isCompareMode = summaryMode === 'compare';
+  const summaryFYSelection = isCompareMode ? summaryFYs : [selectedFY];
+  const isExportDisabled = isSummaryTab && summaryFYSelection.length === 0;
 
   if (!userProfile) {
     return (
@@ -315,7 +385,7 @@ const SabhaDashboard = () => {
 
       <div className="bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-card-foreground mb-2">
                 Sabha Dashboard
@@ -328,14 +398,88 @@ const SabhaDashboard = () => {
               </div>
             </div>
 
-            <div className="w-48">
-              <Select
-                value={selectedFY}
-                onChange={handleFYChange}
-                options={fyOptions}
-                label="Financial Year"
-                placeholder="Select FY"
-              />
+            <div className="w-full sm:w-auto">
+              {isSummaryTab ? (
+                <div className="flex flex-col gap-3 items-start sm:items-end">
+                  <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                    <button
+                      onClick={() => handleSummaryModeChange('single')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        summaryMode === 'single'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Single FY
+                    </button>
+                    <button
+                      onClick={() => handleSummaryModeChange('compare')}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        summaryMode === 'compare'
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Compare FYs
+                    </button>
+                  </div>
+
+                  <div className="w-full sm:w-64">
+                    <Select
+                      value={isCompareMode ? summaryFYs : selectedFY}
+                      onChange={isCompareMode ? handleSummaryFYChange : handleFYChange}
+                      options={fyOptions}
+                      label="Financial Year"
+                      placeholder="Select FY"
+                      multiple={isCompareMode}
+                      clearable={isCompareMode}
+                    />
+                  </div>
+
+                  {isCompareMode && (
+                    <>
+                      <div className="flex flex-wrap gap-2 w-full sm:w-64">
+                        {summaryFYs.length > 0 ? (
+                          summaryFYs.map((fy) => (
+                            <span
+                              key={fy}
+                              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-foreground"
+                            >
+                              {fy}
+                              <button
+                                type="button"
+                                onClick={() => handleSummaryFYChange(summaryFYs.filter((item) => item !== fy))}
+                                className="text-muted-foreground hover:text-foreground"
+                                aria-label={`Remove ${fy}`}
+                              >
+                                <Icon name="X" size={12} />
+                              </button>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No FY selected</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground w-full sm:w-64">
+                        Select 2-3 FYs to compare.
+                      </p>
+                      {compareFYError && (
+                        <p className="text-xs text-red-600 w-full sm:w-64">{compareFYError}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full sm:w-48">
+                  <Select
+                    value={selectedFY}
+                    onChange={handleFYChange}
+                    options={fyOptions}
+                    label="Financial Year"
+                    placeholder="Select FY"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -390,13 +534,16 @@ const SabhaDashboard = () => {
             {userProfile?.role === 'treasurer' && (
               <div className="relative" ref={exportRef}>
                 <button
-                  onClick={() => setIsExportOpen((prev) => !prev)}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/30 text-sm"
+                  onClick={() => !isExportDisabled && setIsExportOpen((prev) => !prev)}
+                  disabled={isExportDisabled}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm ${
+                    isExportDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/30'
+                  }`}
                 >
                   <Icon name="Download" size={16} />
                   Export
                 </button>
-                {isExportOpen && (
+                {isExportOpen && !isExportDisabled && (
                   <div className="absolute right-0 mt-2 w-40 bg-popover border border-border rounded-md shadow-lg z-50">
                     <button
                       onClick={handleExportPdf}
@@ -404,14 +551,12 @@ const SabhaDashboard = () => {
                     >
                       Export PDF
                     </button>
-                    {activeTab === 'entries' && (
-                      <button
-                        onClick={handleExportCsv}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
-                      >
-                        Export CSV
-                      </button>
-                    )}
+                    <button
+                      onClick={handleExportCsv}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                    >
+                      Export CSV
+                    </button>
                   </div>
                 )}
               </div>
@@ -448,6 +593,9 @@ const SabhaDashboard = () => {
           <SummaryView
             ref={summaryExportRef}
             selectedFY={selectedFY}
+            selectedFYs={summaryFYs}
+            summaryMode={summaryMode}
+            fyOptions={fyOptions}
             userProfile={userProfile}
             entries={entries} // ✅ summary uses same supabase-backed entries
             pratinidhiFilter={pratinidhiFilter}
@@ -457,7 +605,11 @@ const SabhaDashboard = () => {
         )}
 
         {activeTab === 'remittances' && userProfile?.role === 'treasurer' && (
-          <RemittancesTab selectedFY={selectedFY} userProfile={userProfile} />
+          <RemittancesTab
+            ref={remittancesExportRef}
+            selectedFY={selectedFY}
+            userProfile={userProfile}
+          />
         )}
       </main>
     </div>
