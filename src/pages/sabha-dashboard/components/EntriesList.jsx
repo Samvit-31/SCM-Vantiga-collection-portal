@@ -569,6 +569,8 @@ const EntriesList = forwardRef(({
     openPrintWindow(`Sabha Entries (Member-wise Export) - FY ${selectedFY}`, bodyHtml);
   };
 
+  const showPratinidhiColumn = userRole !== "pratinidhi";
+
   useImperativeHandle(ref, () => ({
     exportEntriesCsv,
     exportEntriesPdf,
@@ -852,9 +854,11 @@ const EntriesList = forwardRef(({
                 <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
                   Submitted Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
-                  Pratinidhi
-                </th>
+                {showPratinidhiColumn && (
+                  <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
+                    Pratinidhi
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium bg-[#F97316] text-white uppercase tracking-wider">
                   Payer Name
                 </th>
@@ -895,9 +899,11 @@ const EntriesList = forwardRef(({
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                       {formatDate(entry?.submittedDate)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                      {pratinidhiName}
-                    </td>
+                    {showPratinidhiColumn && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                        {pratinidhiName}
+                      </td>
+                    )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {payerName}
                     </td>
