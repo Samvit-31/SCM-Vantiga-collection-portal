@@ -521,36 +521,44 @@ const AllEntriesTab = ({ selectedFY }) => {
 
       {/* KPI strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Icon name="Clock" size={16} />
-            Submitted
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-amber-500/10 rounded-lg">
+              <Icon name="Clock" size={22} color="#f59e0b" />
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-card-foreground">{totals.submittedCount}</div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Submitted</h3>
+          <p className="text-2xl font-bold text-card-foreground">{totals.submittedCount}</p>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Icon name="CheckCircle2" size={16} />
-            Acknowledged
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <Icon name="CheckCircle2" size={22} color="#22c55e" />
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-card-foreground">{totals.acknowledgedCount}</div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Acknowledged</h3>
+          <p className="text-2xl font-bold text-card-foreground">{totals.acknowledgedCount}</p>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Icon name="XCircle" size={16} />
-            Rejected
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-red-500/10 rounded-lg">
+              <Icon name="XCircle" size={22} color="#ef4444" />
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-card-foreground">{totals.rejectedCount}</div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Rejected</h3>
+          <p className="text-2xl font-bold text-card-foreground">{totals.rejectedCount}</p>
         </div>
 
-        <div className="bg-card rounded-lg border border-border p-4 shadow-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Icon name="IndianRupee" size={16} />
-            Total Collected (Ack)
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-purple-500/10 rounded-lg">
+              <Icon name="IndianRupee" size={22} color="#a855f7" />
+            </div>
           </div>
-          <div className="mt-1 text-2xl font-bold text-card-foreground">{formatCurrency(totals.acknowledgedAmount)}</div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Collected (Ack)</h3>
+          <p className="text-2xl font-bold text-card-foreground">{formatCurrency(totals.acknowledgedAmount)}</p>
         </div>
       </div>
 

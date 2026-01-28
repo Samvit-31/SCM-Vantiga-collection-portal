@@ -15,6 +15,12 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
+const REJECTION_REASONS = [
+  "Amount not reflected in the bank account.",
+  "Cheque bounced.",
+  "Incorrect entry.",
+];
+
 const getStatusColor = (status) => {
   switch (status) {
     case "SUBMITTED":
@@ -52,7 +58,7 @@ const EntriesList = forwardRef(({
   const [entriesError, setEntriesError] = useState(null);
 
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedRejectReason, setSelectedRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const effectiveUserId = useMemo(() => {
@@ -626,22 +632,26 @@ const EntriesList = forwardRef(({
   };
 
   const openRejectModal = () => {
-    setRejectionReason("");
+    setSelectedRejectReason("");
     setIsRejectModalOpen(true);
   };
 
   const closeRejectModal = () => {
     setIsRejectModalOpen(false);
-    setRejectionReason("");
+    setSelectedRejectReason("");
   };
 
   // ✅ DB update: reject (also sets acknowledged_by)
   const handleReject = async () => {
-    if (!selectedEntry || !rejectionReason.trim()) return;
+    const isChequeBounceSelected = selectedRejectReason === "Cheque bounced.";
+    const isChequePayment = selectedEntry?.paidBy === "Cheque";
+    const isChequeBounceInvalid = isChequeBounceSelected && !isChequePayment;
+
+    if (!selectedEntry || !selectedRejectReason || isChequeBounceInvalid) return;
 
     setIsProcessing(true);
     try {
-      const reason = rejectionReason.trim();
+      const reason = selectedRejectReason;
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr) throw userErr;
@@ -692,6 +702,11 @@ const EntriesList = forwardRef(({
   const handleEmailReceipt = () => {
     alert(`Sending receipt ${selectedEntry?.receiptNo} to ${selectedEntry?.family?.payerEmail}...`);
   };
+
+  const isChequeBounceSelected = selectedRejectReason === "Cheque bounced.";
+  const isChequePayment = selectedEntry?.paidBy === "Cheque";
+  const isChequeBounceInvalid = isChequeBounceSelected && !isChequePayment;
+  const canConfirmReject = Boolean(selectedRejectReason) && !isProcessing && !isChequeBounceInvalid;
 
   const renderActions = () => {
     if (!selectedEntry) return null;
@@ -1164,7 +1179,7 @@ const EntriesList = forwardRef(({
                     Reject Entry
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Provide a clear reason. This will be visible in the entry details.
+                    Select a reason. This will be visible in the entry details.
                   </p>
                 </div>
                 <button
@@ -1177,27 +1192,56 @@ const EntriesList = forwardRef(({
               </div>
 
               <div className="px-5 py-4 space-y-3">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Rejection Reason
-                </label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  rows={4}
-                  placeholder="E.g., duplicate entry, incorrect amount, missing reference..."
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                />
+                <div className="text-xs text-muted-foreground">
+                  Payment Mode: <span className="font-semibold text-foreground">{selectedEntry?.paidBy || "-"}</span>
+                </div>
+                <fieldset className="space-y-3">
+                  <legend className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Rejection Reason
+                  </legend>
+                  <div className="flex flex-col gap-2">
+                    {REJECTION_REASONS.map((reason, index) => (
+                      <label
+                        key={reason}
+                        htmlFor={`reject-reason-${index}`}
+                        className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm text-foreground cursor-pointer hover:bg-muted/40"
+                      >
+                        <input
+                          id={`reject-reason-${index}`}
+                          type="radio"
+                          name="reject-reason"
+                          value={reason}
+                          checked={selectedRejectReason === reason}
+                          onChange={() => setSelectedRejectReason(reason)}
+                          className="mt-1 h-4 w-4 text-primary"
+                        />
+                        <span className="leading-5">{reason}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {isChequeBounceInvalid && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Cheque bounced can only be selected for entries paid via Cheque.
+                    </div>
+                  )}
+                </fieldset>
               </div>
 
-              <div className="px-5 py-4 border-t border-border flex items-center justify-end gap-2">
-                <Button variant="outline" onClick={closeRejectModal} disabled={isProcessing}>
+              <div className="px-5 py-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={closeRejectModal}
+                  disabled={isProcessing}
+                  className="w-full sm:w-auto"
+                >
                   Cancel
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleReject}
                   loading={isProcessing}
-                  disabled={isProcessing || !rejectionReason.trim()}
+                  disabled={!canConfirmReject}
+                  className="w-full sm:w-auto"
                 >
                   Reject Entry
                 </Button>

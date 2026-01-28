@@ -99,7 +99,7 @@ const ScmOfficeDashboard = () => {
 
       <div className="bg-card border-b border-border shadow-sm">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-card-foreground mb-2">
                 SCM Office Dashboard (Shirali)
@@ -111,7 +111,7 @@ const ScmOfficeDashboard = () => {
               </div>
             </div>
 
-            <div className="w-48">
+            <div className="w-full max-w-[220px]">
               <Select
                 value={selectedFY}
                 onChange={handleFYChange}
@@ -123,7 +123,8 @@ const ScmOfficeDashboard = () => {
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+          <div className="bg-muted p-1 rounded-md overflow-x-auto">
+            <div className="flex items-center gap-1 min-w-max">
             {/* ✅ ADD SUMMARY TAB BUTTON */}
             <button
               onClick={() => setActiveTab('summary')}
@@ -176,6 +177,7 @@ const ScmOfficeDashboard = () => {
             >
               Remittances
             </button>
+            </div>
           </div>
         </div>
       </div>
