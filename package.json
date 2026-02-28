@@ -59,6 +59,7 @@
   },
   "scripts": {
     "start": "vite",
+    "start:receipt-preview": "vite --open /receipt-preview.html",
     "build": "vite build --sourcemap",
     "serve": "vite preview"
   },

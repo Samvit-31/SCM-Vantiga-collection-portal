@@ -51,20 +51,56 @@ const formatDate = (dateString) => {
   }
 };
 
-const ReceiptPreview = () => {
+const getStandaloneFallback = () => ({
+  receiptNo: 'PREVIEW-001',
+  fy: '2025-26',
+  paidBy: 'UPI',
+  referenceNo: 'N/A',
+  acknowledgedDate: new Date().toISOString(),
+  family: {
+    payerMobile: '9000000000',
+    payerEmail: 'sample@example.com',
+    addressMultiLine: 'Sample Address Line 1\nSample Address Line 2',
+    sabha: 'Shirali',
+    optShowAmountInDirectory: 'Yes',
+    optShowMobileInDirectory: 'No',
+    optShowEmailInDirectory: 'Yes'
+  },
+  members: [
+    {
+      memberId: '1',
+      name: 'Sample Member',
+      age: 35,
+      gender: 'M',
+      gotra: 'Kashyap',
+      amount: 5000,
+      isPrimaryPayer: true
+    }
+  ]
+});
+
+const ReceiptPreview = ({ standalone = false }) => {
   const navigate = useNavigate();
   const logoUrl = new URL('../../../cropped-Math-Logo-Round.png', import.meta.url).href;
   const [entry, setEntry] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
 
   // fetched from Supabase profiles (instead of email)
-  const [pratinidhiName, setPratinidhiName] = useState('�');
+  const [pratinidhiName, setPratinidhiName] = useState('-');
 
   useEffect(() => {
     const storedEntry = localStorage.getItem('selectedReceiptEntry');
     const storedProfile = localStorage.getItem('userProfile');
 
     if (!storedEntry) {
+      if (standalone) {
+        setEntry(getStandaloneFallback());
+        setUserProfile({
+          sabha: 'Shirali',
+          name: 'Preview User'
+        });
+        return;
+      }
       navigate('/sabha-dashboard', { replace: true });
       return;
     }
@@ -74,9 +110,17 @@ const ReceiptPreview = () => {
       setUserProfile(storedProfile ? JSON.parse(storedProfile) : null);
     } catch (e) {
       console.error('Error parsing receipt data:', e);
+      if (standalone) {
+        setEntry(getStandaloneFallback());
+        setUserProfile({
+          sabha: 'Shirali',
+          name: 'Preview User'
+        });
+        return;
+      }
       navigate('/sabha-dashboard', { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, standalone]);
 
   // Load Pratinidhi full name from Supabase profiles
   useEffect(() => {
@@ -104,7 +148,7 @@ const ReceiptPreview = () => {
       if (!userIdToLookup && userProfile?.userId) userIdToLookup = userProfile.userId;
 
       if (!userIdToLookup) {
-        setPratinidhiName('�');
+        setPratinidhiName('-');
         return;
       }
 
@@ -119,7 +163,7 @@ const ReceiptPreview = () => {
       } else {
         const fallback =
           userProfile?.name ||
-          (userProfile?.email ? userProfile.email.split('@')[0] : '�');
+          (userProfile?.email ? userProfile.email.split('@')[0] : '-');
         setPratinidhiName(fallback);
       }
     }
@@ -134,7 +178,7 @@ const ReceiptPreview = () => {
   const members = useMemo(() => (Array.isArray(entry?.members) ? entry.members : []), [entry]);
   const primaryPayer = useMemo(() => members.find((m) => m?.isPrimaryPayer) || null, [members]);
   const primaryPayerName = useMemo(
-    () => primaryPayer?.name || members?.[0]?.name || '�',
+    () => primaryPayer?.name || members?.[0]?.name || '-',
     [primaryPayer, members]
   );
 
@@ -145,29 +189,49 @@ const ReceiptPreview = () => {
 
   const receiptDate = entry?.acknowledgedDate ? formatDate(entry.acknowledgedDate) : formatDate(new Date().toISOString());
 
-  const paidBy = entry?.paidBy || '�';
-  const referenceNo = paidBy === 'Cheque' ? (entry?.referenceNo || '�') : 'Not Applicable';
+  const paidBy = entry?.paidBy || '-';
+  const referenceNo = paidBy === 'Cheque' ? (entry?.referenceNo || '-') : 'Not Applicable';
 
-  const payerMobile = entry?.family?.payerMobile ? `+91 ${entry.family.payerMobile}` : '�';
-  const payerEmail = entry?.family?.payerEmail || '�';
-  const address = entry?.family?.addressMultiLine || '�';
+  const payerMobile = entry?.family?.payerMobile ? `+91 ${entry.family.payerMobile}` : '-';
+  const payerEmail = entry?.family?.payerEmail || '-';
+  const address = entry?.family?.addressMultiLine || '-';
 
   const collectingSabha = userProfile?.sabha
     ? `${userProfile.sabha} Local Sabha`
-    : `${entry?.family?.sabha || '�'} Local Sabha`;
+    : `${entry?.family?.sabha || '-'} Local Sabha`;
 
   const optShowAmount = entry?.family?.optShowAmountInDirectory || 'No';
   const optShowMobile = entry?.family?.optShowMobileInDirectory || 'No';
   const optShowEmail = entry?.family?.optShowEmailInDirectory || 'No';
+  const tableRows = [...members, ...Array(Math.max(0, 5 - members.length)).fill(null)];
 
   return (
     <div className="min-h-screen bg-background">
+      <style>{`
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
+        @media screen {
+          .receipt-sheet {
+            width: 186mm;
+            min-height: 273mm;
+          }
+        }
+        @media print {
+          .receipt-sheet {
+            width: 186mm;
+            min-height: 273mm;
+            margin: 0 auto;
+          }
+        }
+      `}</style>
       {/* Common Header */}
-      <div className="print:hidden">
+      <div className={`print:hidden ${standalone ? 'hidden' : ''}`}>
         <CommonHeader />
       </div>
 
-      <div className="min-h-screen bg-gray-50 print:bg-white">
+      <div className="min-h-screen bg-gray-50 print:bg-white text-slate-900">
         {/* Controls (hidden in print) */}
         <div className="print:hidden bg-white border-b border-gray-200 sticky top-0 z-10">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -182,150 +246,137 @@ const ReceiptPreview = () => {
 
         {/* Receipt */}
         <div className="container mx-auto px-4 py-8 print:py-0">
-          <div className="max-w-5xl mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none">
-            {/* Top line */}
-            <div className="px-6 pt-6">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <img src={logoUrl} alt="SCM Vantiga Portal" className="w-9 h-9 rounded-full" />
-                <span>Shri Chitrapur Math, Shirali, Uttara Kannada, Karnataka</span>
+          <div className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
+            <div className="px-6 pt-4 pb-3 border-b border-slate-300">
+              <div className="flex items-start justify-between gap-3">
+                <img src={logoUrl} alt="SCM Vantiga Portal" className="w-14 h-14 rounded-full mt-1" />
+                <div className="text-center flex-1">
+                  <div className="text-xl leading-tight font-bold uppercase tracking-wide">
+                    Shri Chitrapur Math
+                  </div>
+                  <div className="text-base leading-tight font-semibold mt-1">
+                    Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354
+                  </div>
+                  <div className="text-sm leading-tight font-semibold mt-1">
+                    Email:accts.shirali@chitrapurmath.in
+                    <span className="inline-block ml-6">GSTN:29AAATS5030Q1Z0</span>
+                  </div>
+                </div>
+                <div className="w-14" />
               </div>
             </div>
 
-            {/* Header row */}
-            <div className="px-6 pb-4 pt-3 border-b border-gray-300 flex items-start justify-between">
+            <div className="px-6 py-3 border-b border-slate-300 flex items-start justify-between">
               <div className="text-lg font-bold">Digital Vantiga Receipt</div>
-              <div className="text-sm text-right">
+              <div className="text-sm leading-tight text-right font-semibold">
                 <div>
-                  <span className="font-semibold">Receipt No</span>{' '}
-                  <span className="font-mono">{entry?.receiptNo || '�'}</span>
+                  Receipt number:{' '}
+                  <span className="font-mono">{entry?.receiptNo || '-'}</span>
                 </div>
                 <div>
-                  <span className="font-semibold">Date</span> {receiptDate}
+                  Date: <span className="font-medium">{receiptDate}</span>
                 </div>
               </div>
             </div>
 
-            {/* Two-column layout */}
-            <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* LEFT */}
-              <div className="md:col-span-2">
-                {/* Received From */}
-                <div className="mb-4">
-                  <div className="text-sm font-semibold mb-2">
-                    Received From : <span className="font-normal">{primaryPayerName}</span>
-                  </div>
+            <div className="px-6 py-4 text-base font-semibold">
+              Received From : <span className="font-normal">{primaryPayerName}</span>
+            </div>
 
-                  <div className="border border-gray-300 rounded-md overflow-x-auto">
-                    <table className="w-full min-w-[520px] text-sm">
-                      <thead className="bg-gray-100 border-b border-gray-300">
-                        <tr>
-                          <th className="text-left px-3 py-2">Name</th>
-                          <th className="text-left px-3 py-2">Age</th>
-                          <th className="text-left px-3 py-2">Gender</th>
-                          <th className="text-left px-3 py-2">Gotra</th>
-                          <th className="text-right px-3 py-2">Total Amt</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {members.map((m, idx) => (
-                          <tr key={m?.memberId || idx} className="border-b border-gray-200">
-                            <td className="px-3 py-2">{m?.name || '�'}</td>
-                            <td className="px-3 py-2">{m?.age ?? '�'}</td>
-                            <td className="px-3 py-2">{m?.gender ?? '�'}</td>
-                            <td className="px-3 py-2">{m?.gotra ?? '�'}</td>
-                            <td className="px-3 py-2 text-right">{Number(m?.amount || 0).toLocaleString('en-IN')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-gray-50 font-semibold border-t border-gray-300">
-                          <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
-                          <td className="px-3 py-2 text-right">{totalAmount.toLocaleString('en-IN')}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-
-                  <div className="mt-2 text-sm">
-                    <span className="font-semibold">(IN WORDS Received Rupees </span>
-                    <span className="italic">{amountInWords}</span>
-                    <span className="font-semibold"> Only)</span>
-                  </div>
-                </div>
-
-                <div className="text-sm mb-4">
-                  <div className="font-semibold">Opt to show in Vantiga Directory</div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="text-gray-600">Amount</div>
-                    <div className="font-mono">{optShowAmount}</div>
-                  </div>
-                </div>
-
-                <div className="text-sm mb-4">
-                  <div className="font-semibold">Address:</div>
-                  <div className="mt-1 whitespace-pre-line">{address}</div>
-                </div>
-
-                {/* Paid By + Ref */}
-                <div className="mt-4 text-sm">
-                  <div className="mb-2">
-                    <span className="font-semibold">Paid By : Cash/ Cheque/ NEFT/ Online/ UPI:</span>{' '}
-                    <span className="font-mono">{paidBy}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Chq./ Ref No:</span>{' '}
-                    <span className="font-mono">{referenceNo}</span>
-                  </div>
-                </div>
+            <div className="px-6 pb-3">
+              <div className="border border-slate-300 rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-300">
+                      <th className="text-left px-3 py-2 w-[41%]">Name</th>
+                      <th className="text-left px-3 py-2 w-[10%]">Age</th>
+                      <th className="text-left px-3 py-2 w-[14%]">Gender</th>
+                      <th className="text-left px-3 py-2 w-[15%]">Gotra</th>
+                      <th className="text-center px-3 py-2 w-[20%]">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableRows.map((m, idx) => (
+                      <tr key={m?.memberId || `blank-${idx}`} className="border-b border-slate-200">
+                        <td className="px-3 py-2">{m?.name || ''}</td>
+                        <td className="px-3 py-2">{m?.age ?? ''}</td>
+                        <td className="px-3 py-2">{m?.gender ?? ''}</td>
+                        <td className="px-3 py-2">{m?.gotra ?? ''}</td>
+                        <td className="px-3 py-2 text-right">{m ? Number(m?.amount || 0).toLocaleString('en-IN') : ''}</td>
+                      </tr>
+                    ))}
+                    <tr className="font-semibold">
+                      <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
+                      <td className="px-3 py-2 text-right">{totalAmount.toLocaleString('en-IN')}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-
-              {/* RIGHT */}
-              <div className="md:col-span-1 space-y-4">
-                {/* Vantiga Year */}
-                <div className="text-sm">
-                  <div className="font-semibold">Vantiga for Year:</div>
-                  <div className="mt-1 font-mono">{entry?.fy || '�'}</div>
-                </div>
-
-                {/* Mobile + opt */}
-                <div className="text-sm">
-                  <div className="font-semibold">Mobile Number of Vantiga Payer:</div>
-                  <div className="mt-1 font-mono">{payerMobile}</div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="text-gray-600">Opt to show Mobile number in Vantiga Directory</div>
-                    <div className="font-mono">{optShowMobile}</div>
-                  </div>
-                </div>
-
-                {/* Email + opt */}
-                <div className="text-sm">
-                  <div className="font-semibold">Email ID of Vantiga Payer:</div>
-                  <div className="mt-1 break-all font-mono">{payerEmail}</div>
-                  <div className="mt-1 flex items-center justify-between">
-                    <div className="text-gray-600">Opt to show Email ID in Vantiga Directory</div>
-                    <div className="font-mono">{optShowEmail}</div>
-                  </div>
-                </div>
+              <div className="mt-2 text-base font-semibold">
+                AMOUNT IN WORDS: <span className="italic font-medium">{amountInWords}</span>
               </div>
             </div>
 
-            <div className="px-6 pb-2">
+            <div className="border-t border-slate-300 px-6 py-3">
+              <div className="text-base font-semibold">Address:</div>
+              <div className="text-sm whitespace-pre-line">{address}</div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-3">
+              <div className="text-base font-semibold">Mobile Number:</div>
+              <div className="text-sm font-mono">{payerMobile}</div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-3">
+              <div className="text-base font-semibold">Email ID:</div>
+              <div className="text-sm break-all font-mono">{payerEmail}</div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-4">
+              <div className="text-sm mb-2">
+                <span className="font-semibold">Payment Mode:</span>{' '}
+                <span className="font-normal">Cash / Cheque / NEFT / IMPS / RTGS / UPI</span>{' '}
+                <span className="font-mono">{paidBy}</span>
+              </div>
+              <div className="text-sm">
+                <span className="font-semibold">Reference Number:</span>{' '}
+                <span className="font-mono">{referenceNo}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-3">
+              <div className="text-base font-semibold">Vantiga for year:</div>
+              <div className="text-sm font-mono">{entry?.fy || '-'}</div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-4 bg-slate-100">
+              <div className="text-base font-semibold mb-2">Opt to Show in Vantiga Directory:</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-4">
+                <div>
+                  <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
+                </div>
+                <div>
+                  <span className="font-semibold">Mobile Number:</span> {optShowMobile}
+                </div>
+                <div>
+                  <span className="font-semibold">Email ID:</span> {optShowEmail}
+                </div>
+              </div>
+              <div className="inline-block text-sm font-semibold bg-yellow-200 px-2 py-1 rounded">
+                Consent Statement comes here. To be vetted/provided by legal team
+              </div>
+            </div>
+
+            <div className="border-t border-slate-300 px-6 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <div className="font-semibold">Collecting Local Sabha:</div>
+                  <div className="font-semibold">Collecting Sabha:</div>
                   <div className="mt-1">{collectingSabha}</div>
                 </div>
-                <div className="sm:text-right">
-                  <div className="font-semibold">Pratinidhi Name</div>
+                <div className="text-right">
+                  <div className="font-semibold">Pratinidhi Name and Signature:</div>
                   <div className="mt-1">{pratinidhiName}</div>
                 </div>
-              </div>
-            </div>
-
-            {/* Bottom line */}
-            <div className="px-6 pb-6">
-              <div className="text-center text-xs text-gray-600 font-semibold">
-                No Signature required as this is a computer generated receipt
               </div>
             </div>
           </div>
