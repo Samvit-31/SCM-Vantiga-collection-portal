@@ -374,7 +374,7 @@ const ReceiptPreview = ({ standalone = false }) => {
                   <div className="mt-1">{collectingSabha}</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold">Pratinidhi Name and Signature:</div>
+                  <div className="font-semibold">Pratinidhi Name:</div>
                   <div className="mt-1">{pratinidhiName}</div>
                 </div>
               </div>
