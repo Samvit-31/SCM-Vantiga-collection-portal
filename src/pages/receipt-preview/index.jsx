@@ -88,8 +88,8 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
     entryId: dbEntry?.id || fallbackEntry?.entryId || fallbackEntry?.id,
     id: dbEntry?.id || fallbackEntry?.id || fallbackEntry?.entryId,
     fy: dbEntry?.fy || fallbackEntry?.fy || '-',
-    paidBy: dbEntry?.paid_by || fallbackEntry?.paidBy || '-',
-    referenceNo: dbEntry?.reference_no || fallbackEntry?.referenceNo || '',
+    paidBy: dbEntry?.paid_by ?? '-',
+    referenceNo: dbEntry?.reference_no ?? '',
     receiptNo: dbEntry?.receipt_no || fallbackEntry?.receiptNo || '-',
     submittedBy: dbEntry?.submitted_by || fallbackEntry?.submittedBy || fallbackEntry?.submitted_by || null,
     submitted_by: dbEntry?.submitted_by || fallbackEntry?.submitted_by || fallbackEntry?.submittedBy || null,
@@ -290,8 +290,9 @@ const ReceiptPreview = ({ standalone = false }) => {
 
   const receiptDate = entry?.acknowledgedDate ? formatDate(entry.acknowledgedDate) : formatDate(new Date().toISOString());
 
-  const paidBy = entry?.paidBy || '-';
-  const referenceNo = paidBy === 'Cheque' ? (entry?.referenceNo || '-') : 'Not Applicable';
+  const paidBy = String(entry?.paidBy || '').trim() || '-';
+  const referenceNoRaw = String(entry?.referenceNo ?? '').trim();
+  const referenceNo = referenceNoRaw || (paidBy === 'Cash' ? 'Not Applicable' : '-');
 
   const payerMobile = entry?.family?.payerMobile ? `+91 ${entry.family.payerMobile}` : '-';
   const payerEmail = entry?.family?.payerEmail || '-';
@@ -436,7 +437,6 @@ const ReceiptPreview = ({ standalone = false }) => {
             <div className="border-t border-slate-300 px-6 py-4">
               <div className="text-sm mb-2">
                 <span className="font-semibold">Payment Mode:</span>{' '}
-                <span className="font-normal">Cash / Cheque / NEFT / IMPS / RTGS / UPI</span>{' '}
                 <span className="font-mono">{paidBy}</span>
               </div>
               <div className="text-sm">
