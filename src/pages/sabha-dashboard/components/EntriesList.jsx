@@ -577,8 +577,8 @@ const EntriesList = forwardRef(({
   }));
 
   const generateReceiptNumber = (fy) => {
-    const acknowledgedInFY = entries.filter((e) => e?.fy === fy && e?.status === "ACKNOWLEDGED");
-    const nextNumber = acknowledgedInFY.length + 1;
+    const existingReceiptsInFY = entries.filter((e) => e?.fy === fy && e?.receiptNo);
+    const nextNumber = existingReceiptsInFY.length + 1;
     const paddedNumber = String(nextNumber).padStart(6, "0");
     return `${effectiveSabhaCode}/${fy}/${paddedNumber}`;
   };
@@ -721,8 +721,19 @@ const EntriesList = forwardRef(({
             <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
               Download Receipt
             </Button>
-            <Button onClick={handleEmailReceipt} variant="outline" fullWidth iconName="Mail">
-              Email Receipt
+          </div>
+        );
+      }
+
+      if (
+        selectedEntry?.status === "SUBMITTED" &&
+        selectedEntry?.paidBy === "Cash" &&
+        selectedEntry?.receiptNo
+      ) {
+        return (
+          <div className="flex flex-col gap-2">
+            <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
+              Download Receipt
             </Button>
           </div>
         );
@@ -938,7 +949,7 @@ const EntriesList = forwardRef(({
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground font-mono">
-                      {entry?.status === "ACKNOWLEDGED" ? entry?.receiptNo : "—"}
+                      {entry?.receiptNo || "—"}
                     </td>
                   </tr>
                 );
@@ -980,6 +991,15 @@ const EntriesList = forwardRef(({
 
             {/* ...rest of your drawer unchanged... */}
             <div className="p-6 space-y-6">
+              {selectedEntry?.status === "SUBMITTED" &&
+                selectedEntry?.paidBy === "Cash" &&
+                selectedEntry?.receiptNo && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <span className="font-semibold">
+                      Cash Entry submitted and Receipt Generated but Acknowledgement still pending from Treasurer
+                    </span>
+                  </div>
+              )}
               {/* (no changes below this point in your component logic/UI) */}
               {/* Payment Summary Section */}
               <div className="space-y-4">

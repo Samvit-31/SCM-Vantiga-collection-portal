@@ -200,6 +200,45 @@ const NewEntryForm = () => {
   // ✅ FY helper (you can later calculate FY dynamically)
   const CURRENT_FY = '2025-26';
 
+  const resolveSabhaCode = async () => {
+    if (userProfile?.sabhaCode) return userProfile.sabhaCode;
+
+    const cachedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (cachedProfile?.sabhaCode) return cachedProfile.sabhaCode;
+
+    if (!userProfile?.sabhaId) return 'SABHA';
+
+    const { data, error } = await supabase
+      .from('sabhas')
+      .select('code')
+      .eq('id', userProfile.sabhaId)
+      .single();
+
+    if (error) {
+      console.warn('Failed to resolve sabha code for receipt number:', error);
+      return 'SABHA';
+    }
+
+    return data?.code || 'SABHA';
+  };
+
+  const generateReceiptNumberForCashEntry = async () => {
+    const sabhaCode = await resolveSabhaCode();
+
+    const { count, error } = await supabase
+      .from('vantiga_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('sabha_id', userProfile?.sabhaId)
+      .eq('fy', CURRENT_FY)
+      .not('receipt_no', 'is', null);
+
+    if (error) throw error;
+
+    const nextNumber = Number(count || 0) + 1;
+    const paddedNumber = String(nextNumber).padStart(6, '0');
+    return `${sabhaCode}/${CURRENT_FY}/${paddedNumber}`;
+  };
+
   const checkForDuplicates = async () => {
     try {
       // NOTE:
@@ -528,6 +567,11 @@ const NewEntryForm = () => {
       if (membersErr) throw membersErr;
 
       // 3) Insert VANTIGA ENTRY
+      const receiptNoForEntry =
+        formData?.paidBy === "Cash"
+          ? await generateReceiptNumberForCashEntry()
+          : null;
+
       const entryInsert = {
         sabha_id: userProfile?.sabhaId,  // MUST be UUID
         family_id: familyId,             // UUID from families insert
@@ -535,7 +579,7 @@ const NewEntryForm = () => {
         status: "SUBMITTED",
         paid_by: formData?.paidBy,
         reference_no: formData?.paidBy === "Cash" ? null : (formData?.referenceNo || null),
-        receipt_no: null,
+        receipt_no: receiptNoForEntry,
         submitted_at: new Date().toISOString(),
         submitted_by: sessionData?.session?.user?.id,
         // Optional fields if exist:
