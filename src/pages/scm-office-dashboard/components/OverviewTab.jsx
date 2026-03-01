@@ -76,21 +76,10 @@ const OverviewTab = ({ selectedFY }) => {
     const cards = [
       { label: 'Total Sabhas', value: loading ? '-' : metrics.totalSabhas },
       {
-        label: 'Total Entries Submitted',
-        value: loading ? '-' : metrics.totalEntries,
-        sub: loading ? '' : `Families/Forms: ${metrics.totalEntries} | Members: ${metrics.totalMembers}`
-      },
-      {
         label: 'Total Vantiga Amount Collected (Ack)',
         value: loading ? '-' : formatCurrency(metrics.totalVantigaCollected)
       },
-      { label: 'Entries Acknowledged', value: loading ? '-' : metrics.acknowledgedEntries },
-      { label: 'Pending Entries to be Acknowledged', value: loading ? '-' : metrics.pendingEntries },
-      {
-        label: 'Avg per Sabha (Ack)',
-        value: loading ? '-' : formatCurrency(avgPerSabhaAmount),
-        sub: loading ? '' : `~${avgEntriesPerSabha} entries/sabha`
-      }
+      { label: 'Entries Acknowledged', value: loading ? '-' : metrics.acknowledgedEntries }
     ];
 
     const cardsHtml = cards.map((card) => `
@@ -278,16 +267,6 @@ const OverviewTab = ({ selectedFY }) => {
     setTopPerformingSabhas(top);
   }, [rows]);
 
-  const avgPerSabhaAmount = useMemo(() => {
-    const denom = metrics.totalSabhas || 1;
-    return Math.floor((metrics.totalVantigaCollected || 0) / denom);
-  }, [metrics.totalSabhas, metrics.totalVantigaCollected]);
-
-  const avgEntriesPerSabha = useMemo(() => {
-    const denom = metrics.totalSabhas || 1;
-    return Math.floor((metrics.totalEntries || 0) / denom);
-  }, [metrics.totalSabhas, metrics.totalEntries]);
-
   const avgMembersPerEntry = useMemo(() => {
     const denom = metrics.totalEntries || 1;
     return (metrics.totalMembers / denom).toFixed(1);
@@ -366,20 +345,6 @@ const OverviewTab = ({ selectedFY }) => {
           <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : metrics.totalSabhas}</p>
         </div>
 
-        {/* Total Entries */}
-        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Icon name="FileText" size={24} color="#3b82f6" />
-            </div>
-          </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Entries Submitted</h3>
-          <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : metrics.totalEntries}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Families/Forms: {metrics.totalEntries} | Members: {metrics.totalMembers}
-          </p>
-        </div>
-
         {/* Total Vantiga Collected */}
         <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -404,32 +369,6 @@ const OverviewTab = ({ selectedFY }) => {
           <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : metrics.acknowledgedEntries}</p>
         </div>
 
-        {/* Pending Entries */}
-        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <Icon name="Clock" size={24} color="#f59e0b" />
-            </div>
-          </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Pending Entries to be Acknowledged</h3>
-          <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : metrics.pendingEntries}</p>
-        </div>
-
-        {/* Average per Sabha */}
-        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2 bg-purple-500/10 rounded-lg">
-              <Icon name="TrendingUp" size={24} color="#a855f7" />
-            </div>
-          </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Avg per Sabha (Ack)</h3>
-          <p className="text-2xl font-bold text-card-foreground">
-            {loading ? '—' : formatCurrency(avgPerSabhaAmount)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            ~{loading ? '—' : avgEntriesPerSabha} entries/sabha
-          </p>
-        </div>
       </div>
 
       {/* Top Performing Sabhas */}
