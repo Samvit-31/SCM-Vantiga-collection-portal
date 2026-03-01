@@ -416,6 +416,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
               <div className="mt-2 text-base font-semibold">
                 AMOUNT IN WORDS: <span className="italic font-medium">{amountInWords}</span>
+                <span className="font-semibold">Rupees Only</span>
               </div>
             </div>
 
