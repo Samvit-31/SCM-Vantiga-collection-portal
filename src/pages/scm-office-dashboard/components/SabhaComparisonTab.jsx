@@ -92,23 +92,14 @@ const SabhaComparisonTab = ({ selectedFY }) => {
       'Sabha Name',
       'Total Entries',
       'Acknowledged',
-      'Pending',
-      'Members',
-      'Total Amount (Ack)',
-      'Avg/Ack Entry',
-      'Ack Rate (%)'
+      'Total Amount (Ack)'
     ];
     const rows = sabhaData.map((sabha) => {
-      const ackRate = calculateAcknowledgementRate(sabha?.acknowledgedEntries, sabha?.totalEntries);
       return [
         sabha?.name || '',
         sabha?.totalEntries ?? 0,
         sabha?.acknowledgedEntries ?? 0,
-        sabha?.pendingEntries ?? 0,
-        sabha?.totalMembers ?? 0,
-        sabha?.totalAmount ?? 0,
-        sabha?.avgPerEntry ?? 0,
-        ackRate
+        sabha?.totalAmount ?? 0
       ];
     });
     downloadCsv(headers, rows, `sabha-comparison-${selectedFY}.csv`);
@@ -117,17 +108,12 @@ const SabhaComparisonTab = ({ selectedFY }) => {
   const handleExportPdf = () => {
     setIsExportOpen(false);
     const rowsHtml = sabhaData.map((sabha) => {
-      const ackRate = calculateAcknowledgementRate(sabha?.acknowledgedEntries, sabha?.totalEntries);
       return `
         <tr>
           <td>${escapeHtml(sabha?.name || '')}</td>
           <td>${sabha?.totalEntries ?? 0}</td>
           <td>${sabha?.acknowledgedEntries ?? 0}</td>
-          <td>${sabha?.pendingEntries ?? 0}</td>
-          <td>${sabha?.totalMembers ?? 0}</td>
           <td>${escapeHtml(formatCurrency(sabha?.totalAmount))}</td>
-          <td>${escapeHtml(formatCurrency(sabha?.avgPerEntry))}</td>
-          <td>${ackRate}%</td>
         </tr>
       `;
     }).join('');
@@ -141,15 +127,11 @@ const SabhaComparisonTab = ({ selectedFY }) => {
             <th>Sabha Name</th>
             <th>Total Entries</th>
             <th>Acknowledged</th>
-            <th>Pending</th>
-            <th>Members</th>
             <th>Total Amount (Ack)</th>
-            <th>Avg/Ack Entry</th>
-            <th>Ack Rate</th>
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml || '<tr><td colspan="8">No data</td></tr>'}
+          ${rowsHtml || '<tr><td colspan="4">No data</td></tr>'}
         </tbody>
       </table>
     `;
@@ -458,26 +440,6 @@ const SabhaComparisonTab = ({ selectedFY }) => {
 
                 <th className="text-right p-4 text-sm font-semibold text-card-foreground">
                   <button
-                    onClick={() => handleSort('pendingEntries')}
-                    className="flex items-center justify-end gap-2 ml-auto hover:text-primary transition-colors text-white"
-                  >
-                    Pending
-                    {getSortIcon('pendingEntries')}
-                  </button>
-                </th>
-
-                <th className="text-right p-4 text-sm font-semibold text-card-foreground">
-                  <button
-                    onClick={() => handleSort('totalMembers')}
-                    className="flex items-center justify-end gap-2 ml-auto hover:text-primary transition-colors text-white"
-                  >
-                    Members
-                    {getSortIcon('totalMembers')}
-                  </button>
-                </th>
-
-                <th className="text-right p-4 text-sm font-semibold text-card-foreground">
-                  <button
                     onClick={() => handleSort('totalAmount')}
                     className="flex items-center justify-end gap-2 ml-auto hover:text-primary transition-colors text-white"
                   >
@@ -486,33 +448,18 @@ const SabhaComparisonTab = ({ selectedFY }) => {
                   </button>
                 </th>
 
-                <th className="text-right p-4 text-sm font-semibold text-card-foreground">
-                  <button
-                    onClick={() => handleSort('avgPerEntry')}
-                    className="flex items-center justify-end gap-2 ml-auto hover:text-primary transition-colors text-white"
-                  >
-                    Avg/Ack Entry
-                    {getSortIcon('avgPerEntry')}
-                  </button>
-                </th>
-
-                <th className="text-right p-4 text-sm font-semibold text-card-foreground text-white">
-                  Ack. Rate
-                </th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="p-8 text-center text-muted-foreground">
+                  <td colSpan="4" className="p-8 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               ) : sabhaData.length > 0 ? (
                 sabhaData.map((sabha, index) => {
-                  const ackRate = calculateAcknowledgementRate(sabha?.acknowledgedEntries, sabha?.totalEntries);
-
                   return (
                     <tr
                       key={sabha?.sabhaId || sabha?.name || index}
@@ -536,40 +483,15 @@ const SabhaComparisonTab = ({ selectedFY }) => {
                         </span>
                       </td>
 
-                      <td className="p-4 text-right">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/10 text-amber-600 rounded-full text-sm font-medium">
-                          <Icon name="Clock" size={14} />
-                          {sabha?.pendingEntries}
-                        </span>
-                      </td>
-
-                      <td className="p-4 text-right text-card-foreground">{sabha?.totalMembers}</td>
-
                       <td className="p-4 text-right font-semibold text-card-foreground">
                         {formatCurrency(sabha?.totalAmount)}
-                      </td>
-
-                      <td className="p-4 text-right text-muted-foreground">
-                        {formatCurrency(sabha?.avgPerEntry)}
-                      </td>
-
-                      <td className="p-4 text-right">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-sm font-medium ${
-                          Number(ackRate) >= 90
-                            ? 'bg-green-500/10 text-green-600'
-                            : Number(ackRate) >= 80
-                            ? 'bg-blue-500/10 text-blue-600'
-                            : 'bg-amber-500/10 text-amber-600'
-                        }`}>
-                          {ackRate}%
-                        </span>
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan="8" className="p-8 text-center">
+                  <td colSpan="4" className="p-8 text-center">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Icon name="BarChart3" size={32} color="var(--color-muted-foreground)" />
                       <p>No sabha data found for FY {selectedFY}</p>
