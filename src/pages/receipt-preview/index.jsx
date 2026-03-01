@@ -93,6 +93,8 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
     receiptNo: dbEntry?.receipt_no || fallbackEntry?.receiptNo || '-',
     submittedBy: dbEntry?.submitted_by || fallbackEntry?.submittedBy || fallbackEntry?.submitted_by || null,
     submitted_by: dbEntry?.submitted_by || fallbackEntry?.submitted_by || fallbackEntry?.submittedBy || null,
+    acknowledgedBy: dbEntry?.acknowledged_by || fallbackEntry?.acknowledgedBy || fallbackEntry?.acknowledged_by || null,
+    acknowledged_by: dbEntry?.acknowledged_by || fallbackEntry?.acknowledged_by || fallbackEntry?.acknowledgedBy || null,
     acknowledgedDate: dbEntry?.acknowledged_at || fallbackEntry?.acknowledgedDate || null,
     family: {
       ...(fallbackEntry?.family || {}),
@@ -136,6 +138,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
   // fetched from Supabase profiles (instead of email)
   const [pratinidhiName, setPratinidhiName] = useState('-');
+  const [treasurerName, setTreasurerName] = useState('-');
 
   useEffect(() => {
     let isMounted = true;
@@ -173,7 +176,7 @@ const ReceiptPreview = ({ standalone = false }) => {
         const { data, error } = await supabase
           .from('vantiga_entries')
           .select(`
-            id, fy, paid_by, reference_no, receipt_no, submitted_by, acknowledged_at,
+            id, fy, paid_by, reference_no, receipt_no, submitted_by, acknowledged_by, acknowledged_at,
             families:family_id (
               id,
               address_multiline,
@@ -273,6 +276,37 @@ const ReceiptPreview = ({ standalone = false }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry]);
 
+  // Load Treasurer full name from Supabase profiles (acknowledged_by)
+  useEffect(() => {
+    async function loadTreasurerName() {
+      if (!entry) return;
+
+      const acknowledgedBy =
+        entry?.acknowledged_by ||
+        entry?.acknowledgedBy ||
+        null;
+
+      if (!acknowledgedBy) {
+        setTreasurerName('-');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', acknowledgedBy)
+        .single();
+
+      if (!error && data?.full_name) {
+        setTreasurerName(data.full_name);
+      } else {
+        setTreasurerName('-');
+      }
+    }
+
+    loadTreasurerName();
+  }, [entry]);
+
   const handleBack = () => navigate('/sabha-dashboard');
   const handlePrint = () => window.print();
 
@@ -299,9 +333,8 @@ const ReceiptPreview = ({ standalone = false }) => {
   const address = entry?.family?.addressMultiLine || '-';
 
   const collectingSabha = userProfile?.sabha
-    ? `${userProfile.sabha} Local Sabha`
-    : `${entry?.family?.sabha || '-'} Local Sabha`;
-  const treasurerName = '-';
+    ? userProfile.sabha
+    : `${entry?.family?.sabha || '-'}`;
 
   const optShowAmount = entry?.family?.optShowAmountInDirectory || 'No';
   const optShowMobile = entry?.family?.optShowMobileInDirectory || 'No';
