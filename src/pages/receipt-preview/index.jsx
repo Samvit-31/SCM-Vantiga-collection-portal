@@ -301,6 +301,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   const collectingSabha = userProfile?.sabha
     ? `${userProfile.sabha} Local Sabha`
     : `${entry?.family?.sabha || '-'} Local Sabha`;
+  const treasurerName = '-';
 
   const optShowAmount = entry?.family?.optShowAmountInDirectory || 'No';
   const optShowMobile = entry?.family?.optShowMobileInDirectory || 'No';
@@ -369,7 +370,10 @@ const ReceiptPreview = ({ standalone = false }) => {
             </div>
 
             <div className="px-6 py-3 border-b border-slate-300 flex items-start justify-between">
-              <div className="text-lg font-bold">Digital Vantiga Receipt</div>
+              <div>
+                <div className="text-lg font-bold">Digital Vantiga Receipt</div>
+                <div className="text-sm font-semibold mt-0.5">Collecting Local Sabha: {collectingSabha}</div>
+              </div>
               <div className="text-sm leading-tight text-right font-semibold">
                 <div>
                   Receipt number:{' '}
@@ -472,12 +476,12 @@ const ReceiptPreview = ({ standalone = false }) => {
             <div className="border-t border-slate-300 px-6 py-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <div className="font-semibold">Collecting Sabha:</div>
-                  <div className="mt-1">{collectingSabha}</div>
-                </div>
-                <div className="text-right">
                   <div className="font-semibold">Pratinidhi Name:</div>
                   <div className="mt-1">{pratinidhiName}</div>
+                </div>
+                <div className="text-right">
+                  <div className="font-semibold">Treasurer Name:</div>
+                  <div className="mt-1">{treasurerName}</div>
                 </div>
               </div>
             </div>
