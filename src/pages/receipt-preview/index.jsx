@@ -79,6 +79,55 @@ const getStandaloneFallback = () => ({
   ]
 });
 
+const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
+  const family = dbEntry?.families || {};
+  const members = Array.isArray(family?.family_members) ? family.family_members : [];
+
+  return {
+    ...fallbackEntry,
+    entryId: dbEntry?.id || fallbackEntry?.entryId || fallbackEntry?.id,
+    id: dbEntry?.id || fallbackEntry?.id || fallbackEntry?.entryId,
+    fy: dbEntry?.fy || fallbackEntry?.fy || '-',
+    paidBy: dbEntry?.paid_by || fallbackEntry?.paidBy || '-',
+    referenceNo: dbEntry?.reference_no || fallbackEntry?.referenceNo || '',
+    receiptNo: dbEntry?.receipt_no || fallbackEntry?.receiptNo || '-',
+    submittedBy: dbEntry?.submitted_by || fallbackEntry?.submittedBy || fallbackEntry?.submitted_by || null,
+    submitted_by: dbEntry?.submitted_by || fallbackEntry?.submitted_by || fallbackEntry?.submittedBy || null,
+    acknowledgedDate: dbEntry?.acknowledged_at || fallbackEntry?.acknowledgedDate || null,
+    family: {
+      ...(fallbackEntry?.family || {}),
+      familyId: family?.id || fallbackEntry?.family?.familyId,
+      addressMultiLine: family?.address_multiline || fallbackEntry?.family?.addressMultiLine || '-',
+      payerMobile: family?.payer_mobile || fallbackEntry?.family?.payerMobile || '',
+      payerEmail: family?.payer_email || fallbackEntry?.family?.payerEmail || '',
+      sabha: family?.sabhas?.name || fallbackEntry?.family?.sabha || null,
+      optShowAmountInDirectory:
+        typeof family?.opt_show_amount_in_directory === 'boolean'
+          ? (family.opt_show_amount_in_directory ? 'Yes' : 'No')
+          : (fallbackEntry?.family?.optShowAmountInDirectory || 'No'),
+      optShowMobileInDirectory:
+        typeof family?.opt_show_mobile_in_directory === 'boolean'
+          ? (family.opt_show_mobile_in_directory ? 'Yes' : 'No')
+          : (fallbackEntry?.family?.optShowMobileInDirectory || 'No'),
+      optShowEmailInDirectory:
+        typeof family?.opt_show_email_in_directory === 'boolean'
+          ? (family.opt_show_email_in_directory ? 'Yes' : 'No')
+          : (fallbackEntry?.family?.optShowEmailInDirectory || 'No')
+    },
+    members: members.length
+      ? members.map((m) => ({
+          memberId: m?.id,
+          name: m?.full_name || '-',
+          age: m?.age,
+          gender: m?.gender,
+          gotra: m?.gotra,
+          amount: Number(m?.amount || 0),
+          isPrimaryPayer: !!m?.is_primary_payer
+        }))
+      : (Array.isArray(fallbackEntry?.members) ? fallbackEntry.members : [])
+  };
+};
+
 const ReceiptPreview = ({ standalone = false }) => {
   const navigate = useNavigate();
   const logoUrl = new URL('../../../cropped-Math-Logo-Round.png', import.meta.url).href;
@@ -89,37 +138,89 @@ const ReceiptPreview = ({ standalone = false }) => {
   const [pratinidhiName, setPratinidhiName] = useState('-');
 
   useEffect(() => {
-    const storedEntry = localStorage.getItem('selectedReceiptEntry');
-    const storedProfile = localStorage.getItem('userProfile');
+    let isMounted = true;
 
-    if (!storedEntry) {
-      if (standalone) {
-        setEntry(getStandaloneFallback());
-        setUserProfile({
-          sabha: 'Shirali',
-          name: 'Preview User'
-        });
+    async function loadReceiptEntry() {
+      const storedEntry = localStorage.getItem('selectedReceiptEntry');
+      const storedProfile = localStorage.getItem('userProfile');
+
+      if (!storedEntry) {
+        if (standalone) {
+          setEntry(getStandaloneFallback());
+          setUserProfile({
+            sabha: 'Shirali',
+            name: 'Preview User'
+          });
+          return;
+        }
+        navigate('/sabha-dashboard', { replace: true });
         return;
       }
-      navigate('/sabha-dashboard', { replace: true });
-      return;
+
+      try {
+        const parsedEntry = JSON.parse(storedEntry);
+        const parsedProfile = storedProfile ? JSON.parse(storedProfile) : null;
+
+        if (!isMounted) return;
+        setUserProfile(parsedProfile);
+
+        const entryId = parsedEntry?.entryId || parsedEntry?.id;
+        if (!entryId) {
+          setEntry(parsedEntry);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('vantiga_entries')
+          .select(`
+            id, fy, paid_by, reference_no, receipt_no, submitted_by, acknowledged_at,
+            families:family_id (
+              id,
+              address_multiline,
+              payer_mobile,
+              payer_email,
+              opt_show_amount_in_directory,
+              opt_show_mobile_in_directory,
+              opt_show_email_in_directory,
+              sabhas:sabha_id ( name ),
+              family_members (
+                id, full_name, age, gender, gotra, amount, is_primary_payer
+              )
+            )
+          `)
+          .eq('id', entryId)
+          .single();
+
+        if (!isMounted) return;
+
+        if (error || !data) {
+          console.warn('Receipt fallback to local cache, Supabase fetch failed:', error);
+          setEntry(parsedEntry);
+          return;
+        }
+
+        setEntry(mapDbEntryToReceiptEntry(data, parsedEntry));
+      } catch (e) {
+        console.error('Error loading receipt data:', e);
+        if (!isMounted) return;
+
+        if (standalone) {
+          setEntry(getStandaloneFallback());
+          setUserProfile({
+            sabha: 'Shirali',
+            name: 'Preview User'
+          });
+          return;
+        }
+        navigate('/sabha-dashboard', { replace: true });
+      }
     }
 
-    try {
-      setEntry(JSON.parse(storedEntry));
-      setUserProfile(storedProfile ? JSON.parse(storedProfile) : null);
-    } catch (e) {
-      console.error('Error parsing receipt data:', e);
-      if (standalone) {
-        setEntry(getStandaloneFallback());
-        setUserProfile({
-          sabha: 'Shirali',
-          name: 'Preview User'
-        });
-        return;
-      }
-      navigate('/sabha-dashboard', { replace: true });
-    }
+    loadReceiptEntry();
+
+    return () => {
+      isMounted = false;
+    };
   }, [navigate, standalone]);
 
   // Load Pratinidhi full name from Supabase profiles
