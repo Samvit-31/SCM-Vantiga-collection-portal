@@ -414,52 +414,6 @@ const OverviewTab = ({ selectedFY }) => {
         )}
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <Icon name="Users" size={20} color="#3b82f6" />
-            </div>
-            <h3 className="text-base font-semibold text-card-foreground">Member Statistics</h3>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Members</span>
-              <span className="font-semibold text-card-foreground">{loading ? '—' : metrics.totalMembers}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Avg Members/Entry</span>
-              <span className="font-semibold text-card-foreground">
-                {loading ? '—' : avgMembersPerEntry}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-green-500/10 rounded-lg">
-              <Icon name="Activity" size={20} color="#22c55e" />
-            </div>
-            <h3 className="text-base font-semibold text-card-foreground">Collection Rate</h3>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Acknowledgement Rate</span>
-              <span className="font-semibold text-card-foreground">
-                {loading ? '—' : `${acknowledgementRate}%`}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Pending Rate</span>
-              <span className="font-semibold text-card-foreground">
-                {loading ? '—' : `${pendingRate}%`}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
