@@ -21,7 +21,13 @@ const REMITTANCE_MODES = [
   { value: "UPI", label: "UPI" },
 ];
 
-const getTodayInputValue = () => new Date().toISOString().split("T")[0];
+const getTodayInputValue = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
@@ -294,13 +300,12 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
       const userId = userData?.user?.id;
       if (!userId) throw new Error("No active session. Please login again.");
 
-      const remittedAtIso = new Date(`${formData.remittedAt}T00:00:00`).toISOString();
       const referenceValue = formData.referenceNo?.trim();
       const bankValue = formData.bankName?.trim();
       const payload = {
         sabha_id: sabhaId,
         fy: selectedFY,
-        remitted_at: remittedAtIso,
+        remitted_at: formData.remittedAt,
         remitted_amount: Number(formData?.remittedAmount || 0),
         remittance_mode: formData.remittanceMode,
         reference_no: referenceValue,

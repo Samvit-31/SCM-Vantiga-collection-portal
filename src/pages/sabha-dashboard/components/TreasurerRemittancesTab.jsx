@@ -18,7 +18,13 @@ const STATUS_STYLES = {
   REJECTED: "bg-red-100 text-red-700 border-red-200"
 };
 
-const getTodayInputValue = () => new Date().toISOString().split("T")[0];
+const getTodayInputValue = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
@@ -181,14 +187,13 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
       const userId = userData?.user?.id;
       if (!userId) throw new Error("No active session. Please login again.");
 
-      const remittedAtIso = new Date(`${formData.remittedAt}T00:00:00`).toISOString();
       const remittedAmount = Number(formData?.remittedAmount || 0);
 
       const payload = {
         sabha_id: sabhaId,
         fy: selectedFY,
         remitted_amount: remittedAmount,
-        remitted_at: remittedAtIso,
+        remitted_at: formData.remittedAt,
         remittance_mode: formData.remittanceMode,
         reference_no: formData.referenceNo?.trim() || null,
         bank_name: formData.bankName?.trim() || null,
