@@ -360,6 +360,11 @@ const ReceiptPreview = ({ standalone = false }) => {
             min-height: 273mm;
             margin: 0 auto;
           }
+          .receipt-sheet,
+          .receipt-sheet * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
       `}</style>
       {/* Common Header */}
@@ -452,8 +457,9 @@ const ReceiptPreview = ({ standalone = false }) => {
                 </table>
               </div>
               <div className="mt-1.5 text-base font-semibold">
-                AMOUNT IN WORDS: <span className="italic font-medium">{amountInWords}</span>
-                <span className="font-medium"> Rupees Only</span>
+                AMOUNT IN WORDS: <span className="font-medium"> Rupees</span>
+                <span className="italic font-medium">{amountInWords}</span>
+                <span className="font-medium"> Only</span>
               </div>
             </div>
 
@@ -519,6 +525,12 @@ const ReceiptPreview = ({ standalone = false }) => {
                   <div className="font-semibold">Treasurer Name:</div>
                   <div className="mt-1">{treasurerName}</div>
                 </div>
+              </div>
+            </div>
+
+            <div className="px-6 pb-3 pt-1 text-center">
+              <div className="text-[11px] text-slate-600 font-medium print:text-[10px]">
+                No Signature required as this is a computer generated receipt
               </div>
             </div>
           </div>
