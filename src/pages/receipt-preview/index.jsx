@@ -402,7 +402,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="px-6 py-3 border-b border-slate-300 flex items-start justify-between">
+            <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between">
               <div>
                 <div className="text-lg font-bold">Digital Vantiga Receipt</div>
                 <div className="text-sm font-semibold mt-0.5">Collecting Local Sabha: {collectingSabha}</div>
@@ -418,11 +418,11 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="px-6 py-4 text-base font-semibold">
+            <div className="px-6 py-2.5 text-base font-semibold">
               Received From : <span className="font-normal">{primaryPayerName}</span>
             </div>
 
-            <div className="px-6 pb-3">
+            <div className="px-6 pb-2">
               <div className="border border-slate-300 rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -451,29 +451,31 @@ const ReceiptPreview = ({ standalone = false }) => {
                   </tbody>
                 </table>
               </div>
-              <div className="mt-2 text-base font-semibold">
+              <div className="mt-1.5 text-base font-semibold">
                 AMOUNT IN WORDS: <span className="italic font-medium">{amountInWords}</span>
                 <span className="font-medium"> Rupees Only</span>
               </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-3">
+            <div className="border-t border-slate-300 px-6 py-2">
               <div className="text-base font-semibold">Address:</div>
-              <div className="text-sm whitespace-pre-line">{address}</div>
+              <div className="text-sm whitespace-pre-line leading-snug">{address}</div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-3">
-              <div className="text-base font-semibold">Mobile Number:</div>
-              <div className="text-sm font-mono">{payerMobile}</div>
+            <div className="border-t border-slate-300 px-6 py-2">
+              <div className="text-base font-semibold">
+                Mobile Number: <span className="text-sm font-mono font-normal">{payerMobile}</span>
+              </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-3">
-              <div className="text-base font-semibold">Email ID:</div>
-              <div className="text-sm break-all font-mono">{payerEmail}</div>
+            <div className="border-t border-slate-300 px-6 py-2">
+              <div className="text-base font-semibold">
+                Email ID: <span className="text-sm break-all font-mono font-normal">{payerEmail}</span>
+              </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-4">
-              <div className="text-sm mb-2">
+            <div className="border-t border-slate-300 px-6 py-2.5">
+              <div className="text-sm mb-1.5">
                 <span className="font-semibold">Payment Mode:</span>{' '}
                 <span className="font-mono">{paidBy}</span>
               </div>
@@ -483,14 +485,15 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-3">
-              <div className="text-base font-semibold">Vantiga for year:</div>
-              <div className="text-sm font-mono">{entry?.fy || '-'}</div>
+            <div className="border-t border-slate-300 px-6 py-2">
+              <div className="text-base font-semibold">
+                Vantiga for year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
+              </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-4 bg-slate-100">
+            <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
               <div className="text-base font-semibold mb-2">Opt to Show in Vantiga Directory:</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-2.5">
                 <div>
                   <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
                 </div>
@@ -506,7 +509,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-4">
+            <div className="border-t border-slate-300 px-6 py-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                 <div>
                   <div className="font-semibold">Pratinidhi Name:</div>
