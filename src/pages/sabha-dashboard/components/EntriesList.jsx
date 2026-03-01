@@ -787,9 +787,6 @@ const EntriesList = forwardRef(({
             <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
               Download Receipt
             </Button>
-            <Button onClick={handleEmailReceipt} variant="outline" fullWidth iconName="Mail">
-              Email Receipt
-            </Button>
           </div>
         );
       }
