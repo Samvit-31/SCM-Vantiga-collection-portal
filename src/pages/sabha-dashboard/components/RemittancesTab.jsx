@@ -15,13 +15,10 @@ import { supabase } from "../../../supabaseClient";
 import { getRemittanceStatusBadge } from "../../../utils/remittanceStatus.jsx";
 
 const REMITTANCE_MODES = [
-  { value: "NEFT", label: "NEFT" },
-  { value: "RTGS", label: "RTGS" },
-  { value: "IMPS", label: "IMPS" },
-  { value: "UPI", label: "UPI" },
+  { value: "CASH", label: "Cash" },
   { value: "CHEQUE", label: "Cheque" },
-  { value: "CASH_DEPOSIT", label: "Cash Deposit" },
-  { value: "ONLINE", label: "Online" }
+  { value: "NEFT/RTGS/IMPS", label: "NEFT/RTGS/IMPS" },
+  { value: "UPI", label: "UPI" },
 ];
 
 const getTodayInputValue = () => new Date().toISOString().split("T")[0];
