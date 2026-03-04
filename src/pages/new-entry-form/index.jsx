@@ -837,11 +837,12 @@ const NewEntryForm = () => {
                     />
                     <Input
                       label="Age"
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={member?.age}
                       onChange={(e) => handleMemberChange(index, 'age', e?.target?.value)}
                       placeholder="Age"
-                      min="1"
                       required
                       error={errors?.[`member_${index}_age`]}
                     />
@@ -864,12 +865,11 @@ const NewEntryForm = () => {
                     />
                     <Input
                       label="Contribution Amount (₹)"
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={member?.amount}
                       onChange={(e) => handleMemberChange(index, 'amount', e?.target?.value)}
                       placeholder="Amount"
-                      min="1"
-                      step="0.01"
                       required
                       error={errors?.[`member_${index}_amount`]}
                     />
