@@ -481,7 +481,7 @@ const OfficeRemittancesTab = ({ selectedFY }) => {
               <Icon name="IndianRupee" size={22} color="#3b82f6" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Collected (Ack)</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Collection across all Sabhas (Ack)</h3>
           <p className="text-2xl font-bold text-card-foreground">{formatAmount(kpis.totalCollected)}</p>
         </div>
 
@@ -491,7 +491,7 @@ const OfficeRemittancesTab = ({ selectedFY }) => {
               <Icon name="CheckCircle2" size={22} color="#22c55e" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Remitted (Verified)</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Remittance (Verified by SCM Office)</h3>
           <p className="text-2xl font-bold text-card-foreground">{formatAmount(kpis.totalVerified)}</p>
         </div>
 
@@ -501,7 +501,7 @@ const OfficeRemittancesTab = ({ selectedFY }) => {
               <Icon name="Clock" size={22} color="#f59e0b" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Pending Remittances</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Pending Remittances Request</h3>
           <p className="text-2xl font-bold text-card-foreground">{formatAmount(kpis.pendingTotal)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {kpis.pendingCount} {kpis.pendingCount === 1 ? "remittance" : "remittances"}
@@ -514,7 +514,7 @@ const OfficeRemittancesTab = ({ selectedFY }) => {
               <Icon name="Wallet" size={22} color="#64748b" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Retained</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Vantiga Retained (Across all Sabhas)</h3>
           <p className="text-2xl font-bold text-card-foreground">{formatAmount(kpis.retainedTotal)}</p>
         </div>
       </div>
