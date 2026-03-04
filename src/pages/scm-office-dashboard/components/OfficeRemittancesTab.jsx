@@ -514,7 +514,7 @@ const OfficeRemittancesTab = ({ selectedFY }) => {
               <Icon name="Wallet" size={22} color="#64748b" />
             </div>
           </div>
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Vantiga Retained (Across all Sabhas)</h3>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Vantiga Retained (All Sabhas)</h3>
           <p className="text-2xl font-bold text-card-foreground">{formatAmount(kpis.retainedTotal)}</p>
         </div>
       </div>
