@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import Button from '../../components/ui/Button';
 import CommonHeader from 'components/ui/CommonHeader';
 import { supabase } from '../../supabaseClient';
@@ -56,14 +58,6 @@ const toReceiptFileSafeName = (receiptNo) => {
   if (!value || value === '-') return 'Receipt';
   return `Receipt-${value.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()}`;
 };
-
-const escapeHtml = (value) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 
 const getStandaloneFallback = () => ({
   receiptNo: 'PREVIEW-001',
@@ -149,8 +143,8 @@ const ReceiptPreview = ({ standalone = false }) => {
   const logoUrl = new URL('../../../cropped-Math-Logo-Round.png', import.meta.url).href;
   const [entry, setEntry] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const initialTitleRef = useRef(document.title);
-  const printRestoreTimerRef = useRef(null);
   const receiptSheetRef = useRef(null);
 
   // fetched from Supabase profiles (instead of email)
@@ -245,10 +239,6 @@ const ReceiptPreview = ({ standalone = false }) => {
 
   useEffect(() => {
     return () => {
-      if (printRestoreTimerRef.current) {
-        window.clearTimeout(printRestoreTimerRef.current);
-        printRestoreTimerRef.current = null;
-      }
       document.title = initialTitleRef.current;
     };
   }, []);
@@ -339,55 +329,43 @@ const ReceiptPreview = ({ standalone = false }) => {
   }, [entry]);
 
   const handleBack = () => navigate('/sabha-dashboard');
-  const handlePrint = () => {
-    const sheetHtml = receiptSheetRef.current?.outerHTML;
-    if (!sheetHtml) {
-      window.print();
-      return;
-    }
+  const handleDownloadPdf = async () => {
+    const receiptSheet = receiptSheetRef.current;
+    if (!receiptSheet || isDownloadingPdf) return;
 
-    const printTitle = toReceiptFileSafeName(entry?.receiptNo);
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=900');
-    if (!printWindow) {
-      window.print();
-      return;
-    }
+    try {
+      setIsDownloadingPdf(true);
 
-    const headAssets = Array.from(
-      document.querySelectorAll('link[rel="stylesheet"], style')
-    )
-      .map((node) => node.outerHTML)
-      .join('\n');
+      const canvas = await html2canvas(receiptSheet, {
+        backgroundColor: '#ffffff',
+        scale: Math.min(window.devicePixelRatio || 2, 3),
+        useCORS: true
+      });
 
-    printWindow.document.write(`<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(printTitle)}</title>
-    ${headAssets}
-    <style>
-      @page { size: A4 portrait; margin: 12mm; }
-      html, body { margin: 0; padding: 0; background: #fff; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .receipt-sheet {
-        width: 186mm;
-        min-height: 273mm;
-        margin: 0 auto;
+      const imageData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const maxWidth = 186;
+      const maxHeight = 273;
+      let imageWidth = maxWidth;
+      let imageHeight = (canvas.height * imageWidth) / canvas.width;
+
+      if (imageHeight > maxHeight) {
+        imageHeight = maxHeight;
+        imageWidth = (canvas.width * imageHeight) / canvas.height;
       }
-    </style>
-  </head>
-  <body>
-    ${sheetHtml}
-  </body>
-</html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.onload = () => {
-      printWindow.print();
-      printWindow.onafterprint = () => {
-        printWindow.close();
-      };
-    };
+
+      const x = (pageWidth - imageWidth) / 2;
+      const y = 12;
+      pdf.addImage(imageData, 'PNG', x, y, imageWidth, imageHeight, undefined, 'FAST');
+      pdf.save(`${toReceiptFileSafeName(entry?.receiptNo)}.pdf`);
+    } catch (error) {
+      console.error('Failed to generate receipt PDF:', error);
+      window.alert('Unable to download receipt right now. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const members = useMemo(() => (Array.isArray(entry?.members) ? entry.members : []), [entry]);
@@ -459,8 +437,14 @@ const ReceiptPreview = ({ standalone = false }) => {
             <Button variant="outline" onClick={handleBack} iconName="ArrowLeft" iconPosition="left">
               Back to Dashboard
             </Button>
-            <Button variant="default" onClick={handlePrint} iconName="Printer" iconPosition="left">
-              Print
+            <Button
+              variant="default"
+              onClick={handleDownloadPdf}
+              iconName="Download"
+              iconPosition="left"
+              disabled={isDownloadingPdf}
+            >
+              {isDownloadingPdf ? 'Preparing PDF...' : 'Download Receipt'}
             </Button>
           </div>
         </div>
