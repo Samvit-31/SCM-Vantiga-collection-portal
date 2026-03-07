@@ -182,7 +182,7 @@ const NewEntryForm = () => {
     if (!isValidFinancialYear(entryFY, fyOptions) && fyOptions?.length > 0) {
       setEntryFY(fyOptions[fyOptions.length - 1].value);
     }
-  }, [location?.state?.prefillFY, fyOptions, entryFY]);
+  }, [location?.state?.prefillFY, fyOptions]);
 
   // -----------------------
   // DUPLICATE CHECK (UPDATED): Now reads from Supabase, NOT localStorage.
