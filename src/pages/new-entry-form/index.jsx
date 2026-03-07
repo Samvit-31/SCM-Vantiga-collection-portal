@@ -373,6 +373,17 @@ const NewEntryForm = () => {
     { value: 'Other', label: 'Other' }
   ];
 
+  const gotraOptions = [
+    { value: 'Kashyapa', label: 'Kashyapa' },
+    { value: 'Bharadwaja', label: 'Bharadwaja' },
+    { value: 'Vasishta', label: 'Vasishta' },
+    { value: 'Vishwamitra', label: 'Vishwamitra' },
+    { value: 'Jamadagni', label: 'Jamadagni' },
+    { value: 'Atri', label: 'Atri' },
+    { value: 'Gautama', label: 'Gautama' },
+    { value: 'Agastya', label: 'Agastya' }
+  ];
+
   const yesNoOptions = [
     { value: 'Yes', label: 'Yes' },
     { value: 'No', label: 'No' }
@@ -853,11 +864,12 @@ const NewEntryForm = () => {
                       options={genderOptions}
                       required
                     />
-                    <Input
+                    <Select
                       label="Gotra"
                       value={member?.gotra}
-                      onChange={(e) => handleMemberChange(index, 'gotra', e?.target?.value)}
-                      placeholder="Gotra"
+                      onChange={(value) => handleMemberChange(index, 'gotra', value)}
+                      options={gotraOptions}
+                      placeholder="Select Gotra"
                       required
                       error={errors?.[`member_${index}_gotra`]}
                       disabled={index > 0}
