@@ -57,6 +57,14 @@ const toReceiptFileSafeName = (receiptNo) => {
   return `Receipt-${value.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()}`;
 };
 
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 const getStandaloneFallback = () => ({
   receiptNo: 'PREVIEW-001',
   fy: '2025-26',
@@ -143,6 +151,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   const [userProfile, setUserProfile] = useState(null);
   const initialTitleRef = useRef(document.title);
   const printRestoreTimerRef = useRef(null);
+  const receiptSheetRef = useRef(null);
 
   // fetched from Supabase profiles (instead of email)
   const [pratinidhiName, setPratinidhiName] = useState('-');
@@ -331,29 +340,54 @@ const ReceiptPreview = ({ standalone = false }) => {
 
   const handleBack = () => navigate('/sabha-dashboard');
   const handlePrint = () => {
-    const previousTitle = document.title;
-    const forcedTitle = toReceiptFileSafeName(entry?.receiptNo);
-
-    const restoreTitle = () => {
-      document.title = previousTitle;
-      if (printRestoreTimerRef.current) {
-        window.clearTimeout(printRestoreTimerRef.current);
-        printRestoreTimerRef.current = null;
-      }
-    };
-
-    if (printRestoreTimerRef.current) {
-      window.clearTimeout(printRestoreTimerRef.current);
-      printRestoreTimerRef.current = null;
+    const sheetHtml = receiptSheetRef.current?.outerHTML;
+    if (!sheetHtml) {
+      window.print();
+      return;
     }
 
-    document.title = forcedTitle;
-    window.addEventListener('afterprint', restoreTitle, { once: true });
-    printRestoreTimerRef.current = window.setTimeout(restoreTitle, 10000);
-
-    window.setTimeout(() => {
+    const printTitle = toReceiptFileSafeName(entry?.receiptNo);
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1100,height=900');
+    if (!printWindow) {
       window.print();
-    }, 0);
+      return;
+    }
+
+    const headAssets = Array.from(
+      document.querySelectorAll('link[rel="stylesheet"], style')
+    )
+      .map((node) => node.outerHTML)
+      .join('\n');
+
+    printWindow.document.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(printTitle)}</title>
+    ${headAssets}
+    <style>
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .receipt-sheet {
+        width: 186mm;
+        min-height: 273mm;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    ${sheetHtml}
+  </body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.onafterprint = () => {
+        printWindow.close();
+      };
+    };
   };
 
   const members = useMemo(() => (Array.isArray(entry?.members) ? entry.members : []), [entry]);
@@ -433,7 +467,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
         {/* Receipt */}
         <div className="container mx-auto px-4 py-8 print:py-0">
-          <div className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
+          <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
             <div className="px-6 pt-4 pb-3 border-b border-slate-300">
               <div className="flex items-start justify-between gap-3">
                 <img src={logoUrl} alt="SCM Vantiga Portal" className="w-14 h-14 rounded-full mt-1" />
