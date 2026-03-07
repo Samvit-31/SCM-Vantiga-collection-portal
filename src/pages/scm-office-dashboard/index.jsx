@@ -4,7 +4,6 @@ import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import Icon from '../../components/AppIcon';
 import CommonHeader from '../../components/ui/CommonHeader';
-import OverviewTab from './components/OverviewTab';
 import SabhaComparisonTab from './components/SabhaComparisonTab';
 import AllEntriesTab from './components/AllEntriesTab';
 import OfficeRemittancesTab from './components/OfficeRemittancesTab';
@@ -19,9 +18,7 @@ const ScmOfficeDashboard = () => {
   const fyOptions = getFinancialYearOptions();
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
 
-  // ✅ optionally make Summary default:
-  // const [activeTab, setActiveTab] = useState('summary');
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('summary');
 
   const [isAccessDenied, setIsAccessDenied] = useState(false);
 
@@ -134,16 +131,6 @@ const ScmOfficeDashboard = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('overview')}
-              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                activeTab === 'overview'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Overview
-            </button>
-            <button
               onClick={() => setActiveTab('sabha-comparison')}
               className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
                 activeTab === 'sabha-comparison'
@@ -182,10 +169,6 @@ const ScmOfficeDashboard = () => {
         {/* ✅ SUMMARY TAB */}
         {activeTab === 'summary' && (
           <SummaryTab selectedFY={selectedFY} />
-        )}
-
-        {activeTab === 'overview' && (
-          <OverviewTab selectedFY={selectedFY} />
         )}
 
         {activeTab === 'sabha-comparison' && (

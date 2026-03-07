@@ -245,11 +245,13 @@ const SummaryTab = ({ selectedFY }) => {
     const totalMembersRejected = rejected.reduce((sum, e) => sum + (e?.members?.length || 0), 0);
 
     const totalCollected = acknowledged.reduce((sum, e) => sum + (Number(e.totalAmount) || 0), 0);
+    const totalSabhas = new Set(filteredEntries.map((e) => e.sabha_id).filter(Boolean)).size;
 
     const totalEntries = filteredEntries.length;
     const ackRate = totalEntries > 0 ? ((acknowledged.length / totalEntries) * 100).toFixed(1) : "0.0";
 
     return {
+      totalSabhas,
       submittedCount: submitted.length,
       acknowledgedCount: acknowledged.length,
       rejectedCount: rejected.length,
@@ -330,48 +332,6 @@ const SummaryTab = ({ selectedFY }) => {
       .map(([name, value]) => ({ name, value }))
       .filter((x) => x.value > 0);
   }, [filteredEntries]);
-
-  const kpiCards = useMemo(() => {
-    return [
-      {
-        id: 1,
-        title: "Submitted Entries",
-        value: kpis.submittedCount,
-        sub: `Members: ${kpis.submittedMembers}`,
-        icon: "Send",
-        color: "#3b82f6",
-        bg: "bg-blue-500/10",
-      },
-      {
-        id: 2,
-        title: "Acknowledged Entries",
-        value: kpis.acknowledgedCount,
-        sub: `Members: ${kpis.acknowledgedMembers}`,
-        icon: "CheckCircle2",
-        color: "#22c55e",
-        bg: "bg-green-500/10",
-      },
-      {
-        id: 3,
-        title: "Rejected Entries",
-        value: kpis.rejectedCount,
-        sub: `Members: ${kpis.rejectedMembers}`,
-        icon: "XCircle",
-        color: "#ef4444",
-        bg: "bg-red-500/10",
-      },
-      {
-        id: 4,
-        title: "Total Collected (Ack)",
-        value: formatCurrency(kpis.totalCollected),
-        sub: `Ack rate: ${kpis.ackRate}%`,
-        icon: "IndianRupee",
-        color: "#a855f7",
-        bg: "bg-purple-500/10",
-        isCurrency: true,
-      },
-    ];
-  }, [kpis]);
 
   const emptyState = !loading && filteredEntries.length === 0;
 
@@ -495,19 +455,38 @@ const SummaryTab = ({ selectedFY }) => {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiCards.map((k) => (
-          <div key={k.id} className="bg-card rounded-lg border border-border p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <div className={`p-2 ${k.bg} rounded-lg`}>
-                <Icon name={k.icon} size={22} color={k.color} />
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Icon name="Building2" size={24} color="var(--color-primary)" />
             </div>
-            <div className="text-sm font-medium text-muted-foreground">{k.title}</div>
-            <div className="mt-1 text-2xl font-bold text-card-foreground">{k.value}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{k.sub}</div>
           </div>
-        ))}
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Sabhas</h3>
+          <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : kpis.totalSabhas}</p>
+        </div>
+
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <Icon name="IndianRupee" size={24} color="#22c55e" />
+            </div>
+          </div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Vantiga Amount Collected (Ack)</h3>
+          <p className="text-2xl font-bold text-card-foreground">
+            {loading ? '—' : formatCurrency(kpis.totalCollected)}
+          </p>
+        </div>
+
+        <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <Icon name="CheckCircle" size={24} color="#22c55e" />
+            </div>
+          </div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-1">Entries Acknowledged</h3>
+          <p className="text-2xl font-bold text-card-foreground">{loading ? '—' : kpis.acknowledgedCount}</p>
+        </div>
       </div>
 
       {/* Charts */}
