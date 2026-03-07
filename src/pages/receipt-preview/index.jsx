@@ -487,8 +487,18 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="px-6 py-2.5 text-base font-semibold">
-              Received From : <span className="font-normal">{primaryPayerName}</span>
+            <div className="px-6 py-2.5 border-b border-slate-300 flex items-center justify-between gap-4">
+              <div className="text-base font-semibold">
+                Received From : <span className="font-normal">{primaryPayerName}</span>
+              </div>
+              <div className="text-base font-semibold text-right">
+                Vantiga for year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
+              </div>
+            </div>
+
+            <div className="border-b border-slate-300 px-6 py-2">
+              <div className="text-base font-semibold">Address:</div>
+              <div className="text-sm whitespace-pre-line leading-snug">{address}</div>
             </div>
 
             <div className="px-6 pb-2">
@@ -528,11 +538,6 @@ const ReceiptPreview = ({ standalone = false }) => {
             </div>
 
             <div className="border-t border-slate-300 px-6 py-2">
-              <div className="text-base font-semibold">Address:</div>
-              <div className="text-sm whitespace-pre-line leading-snug">{address}</div>
-            </div>
-
-            <div className="border-t border-slate-300 px-6 py-2">
               <div className="text-base font-semibold">
                 Mobile Number: <span className="text-sm font-mono font-normal">{payerMobile}</span>
               </div>
@@ -552,12 +557,6 @@ const ReceiptPreview = ({ standalone = false }) => {
               <div className="text-sm">
                 <span className="font-semibold">Reference Number:</span>{' '}
                 <span className="font-mono">{referenceNo}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-300 px-6 py-2">
-              <div className="text-base font-semibold">
-                Vantiga for year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
               </div>
             </div>
 
