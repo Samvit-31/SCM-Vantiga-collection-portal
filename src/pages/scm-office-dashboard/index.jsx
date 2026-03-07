@@ -8,6 +8,7 @@ import OverviewTab from './components/OverviewTab';
 import SabhaComparisonTab from './components/SabhaComparisonTab';
 import AllEntriesTab from './components/AllEntriesTab';
 import OfficeRemittancesTab from './components/OfficeRemittancesTab';
+import { getCurrentFinancialYear, getFinancialYearOptions } from '../../utils/financialYear';
 
 // ✅ ADD THIS:
 import SummaryTab from './components/SummaryTab';
@@ -15,7 +16,8 @@ import SummaryTab from './components/SummaryTab';
 const ScmOfficeDashboard = () => {
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState(null);
-  const [selectedFY, setSelectedFY] = useState('2025-26');
+  const fyOptions = getFinancialYearOptions();
+  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
 
   // ✅ optionally make Summary default:
   // const [activeTab, setActiveTab] = useState('summary');
@@ -39,12 +41,6 @@ const ScmOfficeDashboard = () => {
 
     setUserProfile(profile);
   }, [navigate]);
-
-  const fyOptions = [
-    { value: '2023-24', label: '2023-24' },
-    { value: '2024-25', label: '2024-25' },
-    { value: '2025-26', label: '2025-26' }
-  ];
 
   const handleFYChange = (value) => {
     setSelectedFY(value);
@@ -116,7 +112,7 @@ const ScmOfficeDashboard = () => {
                 value={selectedFY}
                 onChange={handleFYChange}
                 options={fyOptions}
-                label="Financial Year"
+                label="View FY (filter)"
                 placeholder="Select FY"
               />
             </div>

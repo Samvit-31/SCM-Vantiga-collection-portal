@@ -7,6 +7,7 @@ import CommonHeader from '../../components/ui/CommonHeader';
 import EntriesList from './components/EntriesList';
 import SummaryView from './components/SummaryView';
 import RemittancesTab from './components/RemittancesTab';
+import { getCurrentFinancialYear, getFinancialYearOptions } from '../../utils/financialYear';
 
 // ✅ adjust import path to where your client lives
 import { supabase } from '../../supabaseClient';
@@ -47,9 +48,11 @@ async function getUserSabhaContextOrThrow() {
 const SabhaDashboard = () => {
   const navigate = useNavigate();
   const [userProfile, setUserProfile] = useState(null);
-  const [selectedFY, setSelectedFY] = useState('2025-26');
+  const fyOptions = getFinancialYearOptions();
+  const defaultFY = getCurrentFinancialYear();
+  const [selectedFY, setSelectedFY] = useState(defaultFY);
   const [summaryMode, setSummaryMode] = useState('single');
-  const [summaryFYs, setSummaryFYs] = useState(['2025-26']);
+  const [summaryFYs, setSummaryFYs] = useState([defaultFY]);
   const [compareFYError, setCompareFYError] = useState('');
   const [activeTab, setActiveTab] = useState('entries');
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -119,12 +122,6 @@ const SabhaDashboard = () => {
     }
   }, [userProfile?.role, activeTab]);
 
-  const fyOptions = [
-    { value: '2023-24', label: '2023-24' },
-    { value: '2024-25', label: '2024-25' },
-    { value: '2025-26', label: '2025-26' }
-  ];
-
   const handleFYChange = (value) => setSelectedFY(value);
 
   const normalizeFYOrder = (values) => {
@@ -153,7 +150,7 @@ const SabhaDashboard = () => {
   };
 
   const handleNewEntry = () => {
-    navigate('/new-entry-form');
+    navigate('/new-entry-form', { state: { prefillFY: selectedFY } });
   };
 
   const handleExportPdf = () => {
@@ -429,7 +426,7 @@ const SabhaDashboard = () => {
                       value={isCompareMode ? summaryFYs : selectedFY}
                       onChange={isCompareMode ? handleSummaryFYChange : handleFYChange}
                       options={fyOptions}
-                      label="Financial Year"
+                      label="View FY (filter)"
                       placeholder="Select FY"
                       multiple={isCompareMode}
                       clearable={isCompareMode}
@@ -475,7 +472,7 @@ const SabhaDashboard = () => {
                     value={selectedFY}
                     onChange={handleFYChange}
                     options={fyOptions}
-                    label="Financial Year"
+                    label="View FY (filter)"
                     placeholder="Select FY"
                   />
                 </div>
@@ -520,16 +517,21 @@ const SabhaDashboard = () => {
             </div>
 
             {userProfile?.role === 'pratinidhi' && (
-              <Button
-                variant="outline"
-                size="default"
-                onClick={handleNewEntry}
-                iconName="Plus"
-                iconPosition="left"
-                className= "bg-[#F97316] text-white"
-              >
-                New Entry
-              </Button>
+              <div className="flex flex-col items-end gap-1">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={handleNewEntry}
+                  iconName="Plus"
+                  iconPosition="left"
+                  className= "bg-[#F97316] text-white"
+                >
+                  New Entry
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  New Entry opens with selected FY prefilled; you can change FY in the form.
+                </p>
+              </div>
             )}
             {userProfile?.role === 'treasurer' && (
               <div className="relative" ref={exportRef}>

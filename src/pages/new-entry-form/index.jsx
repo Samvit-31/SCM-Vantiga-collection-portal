@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Icon from '../../components/AppIcon';
 import CommonHeader from '../../components/ui/CommonHeader';
+import {
+  getCurrentFinancialYear,
+  getFinancialYearOptions,
+  isValidFinancialYear
+} from '../../utils/financialYear';
 
 // ✅ ADD: Supabase client
 import { supabase } from "../../supabaseClient";
@@ -49,10 +54,13 @@ export async function getUserSabhaContextOrThrow() {
 
 const NewEntryForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const MAX_ADDITIONAL_MEMBERS = 4;
+  const fyOptions = useMemo(() => getFinancialYearOptions(), []);
+  const [entryFY, setEntryFY] = useState(getCurrentFinancialYear());
 
   // Form state - removed familyId, updated opt-in defaults to "Yes"
   const [formData, setFormData] = useState({
@@ -164,6 +172,18 @@ const NewEntryForm = () => {
     };
   }, [navigate]);
 
+  useEffect(() => {
+    const prefillFY = location?.state?.prefillFY;
+    if (isValidFinancialYear(prefillFY, fyOptions)) {
+      setEntryFY(prefillFY);
+      return;
+    }
+
+    if (!isValidFinancialYear(entryFY, fyOptions) && fyOptions?.length > 0) {
+      setEntryFY(fyOptions[fyOptions.length - 1].value);
+    }
+  }, [location?.state?.prefillFY, fyOptions, entryFY]);
+
   // -----------------------
   // DUPLICATE CHECK (UPDATED): Now reads from Supabase, NOT localStorage.
   // This remains non-blocking (warning only), same as your existing behavior.
@@ -195,11 +215,10 @@ const NewEntryForm = () => {
     formData?.paidBy,
     formData?.sabha,
     userProfile?.sabhaId,
+    entryFY,
   ]);
 
   // ✅ FY helper (you can later calculate FY dynamically)
-  const CURRENT_FY = '2025-26';
-
   const resolveSabhaCode = async () => {
     if (userProfile?.sabhaCode) return userProfile.sabhaCode;
 
@@ -222,21 +241,21 @@ const NewEntryForm = () => {
     return data?.code || 'SABHA';
   };
 
-  const generateReceiptNumberForCashEntry = async () => {
+  const generateReceiptNumberForCashEntry = async (fy) => {
     const sabhaCode = await resolveSabhaCode();
 
     const { count, error } = await supabase
       .from('vantiga_entries')
       .select('id', { count: 'exact', head: true })
       .eq('sabha_id', userProfile?.sabhaId)
-      .eq('fy', CURRENT_FY)
+      .eq('fy', fy)
       .not('receipt_no', 'is', null);
 
     if (error) throw error;
 
     const nextNumber = Number(count || 0) + 1;
     const paddedNumber = String(nextNumber).padStart(6, '0');
-    return `${sabhaCode}/${CURRENT_FY}/${paddedNumber}`;
+    return `${sabhaCode}/${fy}/${paddedNumber}`;
   };
 
   const checkForDuplicates = async () => {
@@ -262,7 +281,7 @@ const NewEntryForm = () => {
           )
         `)
         .eq("sabha_id", userProfile?.sabhaId)
-        .eq("fy", CURRENT_FY)
+        .eq("fy", entryFY)
         .gte("submitted_at", fourteenDaysAgo.toISOString())
         .order("submitted_at", { ascending: false })
         .limit(50);
@@ -402,6 +421,13 @@ const NewEntryForm = () => {
     }
   };
 
+  const handleEntryFYChange = (value) => {
+    setEntryFY(value);
+    if (errors?.entryFY) {
+      setErrors((prev) => ({ ...prev, entryFY: '' }));
+    }
+  };
+
   // Member change + gotra auto-copy from member 1
   const handleMemberChange = (index, field, value) => {
     const updatedMembers = [...members];
@@ -501,6 +527,9 @@ const NewEntryForm = () => {
     if (!userProfile?.sabhaId) {
       newErrors.sabha = 'Sabha is not mapped to your user. Please contact admin.';
     }
+    if (!entryFY) {
+      newErrors.entryFY = 'Entry FY is required';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors)?.length === 0;
@@ -578,13 +607,13 @@ const NewEntryForm = () => {
       // 3) Insert VANTIGA ENTRY
       const receiptNoForEntry =
         formData?.paidBy === "Cash"
-          ? await generateReceiptNumberForCashEntry()
+          ? await generateReceiptNumberForCashEntry(entryFY)
           : null;
 
       const entryInsert = {
         sabha_id: userProfile?.sabhaId,  // MUST be UUID
         family_id: familyId,             // UUID from families insert
-        fy: CURRENT_FY,
+        fy: entryFY,
         status: "SUBMITTED",
         paid_by: formData?.paidBy,
         reference_no: formData?.paidBy === "Cash" ? null : (formData?.referenceNo || null),
@@ -703,6 +732,25 @@ const NewEntryForm = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
+          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-card-foreground mb-4 flex items-center gap-2">
+              <Icon name="Calendar" size={20} />
+              Entry Financial Year
+            </h2>
+            <div className="max-w-sm">
+              <Select
+                label="Entry FY"
+                value={entryFY}
+                onChange={handleEntryFYChange}
+                options={fyOptions}
+                required
+                error={errors?.entryFY}
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Entry FY determines where this submission is recorded.
+            </p>
+          </div>
 
           {/* Duplicate Warning Panel */}
           {showDuplicateWarning && duplicateWarnings?.length > 0 && (
@@ -718,7 +766,7 @@ const NewEntryForm = () => {
                     Similar Entries Found
                   </h3>
                   <p className="text-sm text-amber-800 mb-4">
-                    We found {duplicateWarnings?.length} similar {duplicateWarnings?.length === 1 ? 'entry' : 'entries'} in this Sabha for the current financial year.
+                    We found {duplicateWarnings?.length} similar {duplicateWarnings?.length === 1 ? 'entry' : 'entries'} in this Sabha for Entry FY {entryFY}.
                     Please confirm this is not a resubmission before proceeding.
                   </p>
 
