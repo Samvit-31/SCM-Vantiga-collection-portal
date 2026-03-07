@@ -701,14 +701,16 @@ const EntriesList = forwardRef(({
     navigate("/receipt-preview");
   };
 
-  const handleEmailReceipt = () => {
-    alert(`Sending receipt ${selectedEntry?.receiptNo} to ${selectedEntry?.family?.payerEmail}...`);
-  };
-
   const isChequeBounceSelected = selectedRejectReason === "Cheque bounced.";
   const isChequePayment = selectedEntry?.paidBy === "Cheque";
   const isChequeBounceInvalid = isChequeBounceSelected && !isChequePayment;
   const canConfirmReject = Boolean(selectedRejectReason) && !isProcessing && !isChequeBounceInvalid;
+
+  const AutoEmailNote = () => (
+    <p className="text-xs text-muted-foreground">
+      Receipt email is sent automatically once the receipt number is generated.
+    </p>
+  );
 
   const renderActions = () => {
     if (!selectedEntry) return null;
@@ -721,6 +723,7 @@ const EntriesList = forwardRef(({
             <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
               Download Receipt
             </Button>
+            <AutoEmailNote />
           </div>
         );
       }
@@ -735,6 +738,7 @@ const EntriesList = forwardRef(({
             <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
               Download Receipt
             </Button>
+            <AutoEmailNote />
           </div>
         );
       }
@@ -787,6 +791,7 @@ const EntriesList = forwardRef(({
             <Button onClick={handleDownloadReceipt} variant="default" fullWidth iconName="Download">
               Download Receipt
             </Button>
+            <AutoEmailNote />
           </div>
         );
       }

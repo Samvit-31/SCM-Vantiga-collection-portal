@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import CommonHeader from 'components/ui/CommonHeader';
@@ -49,6 +49,12 @@ const formatDate = (dateString) => {
   } catch {
     return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   }
+};
+
+const toReceiptFileSafeName = (receiptNo) => {
+  const value = String(receiptNo || '').trim();
+  if (!value || value === '-') return 'Receipt';
+  return `Receipt-${value.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()}`;
 };
 
 const getStandaloneFallback = () => ({
@@ -135,6 +141,8 @@ const ReceiptPreview = ({ standalone = false }) => {
   const logoUrl = new URL('../../../cropped-Math-Logo-Round.png', import.meta.url).href;
   const [entry, setEntry] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const initialTitleRef = useRef(document.title);
+  const printRestoreTimerRef = useRef(null);
 
   // fetched from Supabase profiles (instead of email)
   const [pratinidhiName, setPratinidhiName] = useState('-');
@@ -226,6 +234,20 @@ const ReceiptPreview = ({ standalone = false }) => {
     };
   }, [navigate, standalone]);
 
+  useEffect(() => {
+    return () => {
+      if (printRestoreTimerRef.current) {
+        window.clearTimeout(printRestoreTimerRef.current);
+        printRestoreTimerRef.current = null;
+      }
+      document.title = initialTitleRef.current;
+    };
+  }, []);
+
+  useEffect(() => {
+    document.title = toReceiptFileSafeName(entry?.receiptNo);
+  }, [entry?.receiptNo]);
+
   // Load Pratinidhi full name from Supabase profiles
   useEffect(() => {
     async function loadPratinidhiName() {
@@ -308,7 +330,31 @@ const ReceiptPreview = ({ standalone = false }) => {
   }, [entry]);
 
   const handleBack = () => navigate('/sabha-dashboard');
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    const previousTitle = document.title;
+    const forcedTitle = toReceiptFileSafeName(entry?.receiptNo);
+
+    const restoreTitle = () => {
+      document.title = previousTitle;
+      if (printRestoreTimerRef.current) {
+        window.clearTimeout(printRestoreTimerRef.current);
+        printRestoreTimerRef.current = null;
+      }
+    };
+
+    if (printRestoreTimerRef.current) {
+      window.clearTimeout(printRestoreTimerRef.current);
+      printRestoreTimerRef.current = null;
+    }
+
+    document.title = forcedTitle;
+    window.addEventListener('afterprint', restoreTitle, { once: true });
+    printRestoreTimerRef.current = window.setTimeout(restoreTitle, 10000);
+
+    window.setTimeout(() => {
+      window.print();
+    }, 0);
+  };
 
   const members = useMemo(() => (Array.isArray(entry?.members) ? entry.members : []), [entry]);
   const primaryPayer = useMemo(() => members.find((m) => m?.isPrimaryPayer) || null, [members]);
