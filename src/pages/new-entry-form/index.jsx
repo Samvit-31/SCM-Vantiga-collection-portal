@@ -374,14 +374,12 @@ const NewEntryForm = () => {
   ];
 
   const gotraOptions = [
-    { value: 'Kashyapa', label: 'Kashyapa' },
+    { value: 'Koundinya', label: 'Koundinya' },
     { value: 'Bharadwaja', label: 'Bharadwaja' },
-    { value: 'Vasishta', label: 'Vasishta' },
-    { value: 'Vishwamitra', label: 'Vishwamitra' },
-    { value: 'Jamadagni', label: 'Jamadagni' },
+    { value: 'Vatsa', label: 'Vatsa' },
+    { value: 'Kaushika', label: 'Kaushika' },
     { value: 'Atri', label: 'Atri' },
-    { value: 'Gautama', label: 'Gautama' },
-    { value: 'Agastya', label: 'Agastya' }
+    { value: 'Kamshya', label: 'Kamshya' }
   ];
 
   const yesNoOptions = [
@@ -922,10 +920,11 @@ const NewEntryForm = () => {
                 label="Sabha"
                 name="sabha"
                 value={formData?.sabha}
-                onChange={handleInputChange}
+                readOnly
                 placeholder="e.g., Bangalore"
                 required
                 error={errors?.sabha}
+                title="Sabha is auto-mapped from your profile"
               />
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-foreground mb-2 block">
