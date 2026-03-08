@@ -329,12 +329,52 @@ const ReceiptPreview = ({ standalone = false }) => {
   }, [entry]);
 
   const handleBack = () => navigate('/sabha-dashboard');
+
+  const base64ToBlob = (base64, mimeType = 'application/pdf') => {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType });
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDownloadPdf = async () => {
     const receiptSheet = receiptSheetRef.current;
     if (!receiptSheet || isDownloadingPdf) return;
 
     try {
       setIsDownloadingPdf(true);
+      const entryId = entry?.entryId || entry?.id;
+      const receiptNo = entry?.receiptNo;
+
+      if (entryId && receiptNo && receiptNo !== '-') {
+        const { data, error } = await supabase.functions.invoke('generate-receipt-pdf', {
+          body: { entry_id: entryId, receipt_no: receiptNo }
+        });
+
+        if (error) throw error;
+        if (!data?.ok || !data?.pdf_base64) {
+          throw new Error(data?.error || 'Failed to generate receipt PDF');
+        }
+
+        const blob = base64ToBlob(data.pdf_base64, 'application/pdf');
+        const filename = data?.filename || `${toReceiptFileSafeName(entry?.receiptNo)}.pdf`;
+        downloadBlob(blob, filename);
+        return;
+      }
 
       const canvas = await html2canvas(receiptSheet, {
         backgroundColor: '#ffffff',

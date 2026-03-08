@@ -5,6 +5,7 @@
 ```bash
 supabase functions deploy send-receipt-email --no-verify-jwt
 supabase functions deploy retry-receipt-email --no-verify-jwt
+supabase functions deploy generate-receipt-pdf
 ```
 
 ## 2) Configure function secrets

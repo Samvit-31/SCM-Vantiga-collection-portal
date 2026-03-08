@@ -16,6 +16,9 @@ export interface ReceiptDispatchRow {
 
 interface ReceiptMember {
   full_name: string | null;
+  age: number | null;
+  gender: string | null;
+  gotra: string | null;
   amount: number | null;
   is_primary_payer: boolean | null;
 }
@@ -28,12 +31,19 @@ interface ReceiptPayload {
   referenceNo: string | null;
   submittedAt: string | null;
   acknowledgedAt: string | null;
+  submittedBy: string | null;
+  acknowledgedBy: string | null;
   payerEmail: string;
   payerMobile: string | null;
   payerName: string;
   address: string | null;
   sabhaName: string;
   sabhaCode: string | null;
+  optShowAmountInDirectory: "Yes" | "No";
+  optShowMobileInDirectory: "Yes" | "No";
+  optShowEmailInDirectory: "Yes" | "No";
+  pratinidhiName: string;
+  treasurerName: string;
   totalAmount: number;
   members: ReceiptMember[];
 }
@@ -83,8 +93,53 @@ function formatDate(value: string | null): string {
   }
 }
 
-function formatAmount(value: number): string {
-  return value.toFixed(2);
+function formatAmountIndian(value: number): string {
+  try {
+    return value.toLocaleString("en-IN");
+  } catch {
+    return value.toFixed(2);
+  }
+}
+
+function numberToWords(num: number): string {
+  if (!num || num === 0) return "Zero";
+
+  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+
+  const ltThousand = (n: number): string => {
+    if (n === 0) return "";
+    if (n < 10) return ones[n];
+    if (n < 20) return teens[n - 10];
+    if (n < 100) {
+      const t = Math.floor(n / 10);
+      const o = n % 10;
+      return tens[t] + (o ? ` ${ones[o]}` : "");
+    }
+    const h = Math.floor(n / 100);
+    const r = n % 100;
+    return `${ones[h]} Hundred${r ? ` ${ltThousand(r)}` : ""}`;
+  };
+
+  if (num < 1000) return ltThousand(num);
+  if (num < 100000) {
+    const th = Math.floor(num / 1000);
+    const r = num % 1000;
+    return `${ltThousand(th)} Thousand${r ? ` ${ltThousand(r)}` : ""}`;
+  }
+  if (num < 10000000) {
+    const l = Math.floor(num / 100000);
+    const r = num % 100000;
+    return `${ltThousand(l)} Lakh${r ? ` ${numberToWords(r)}` : ""}`;
+  }
+  const c = Math.floor(num / 10000000);
+  const r = num % 10000000;
+  return `${ltThousand(c)} Crore${r ? ` ${numberToWords(r)}` : ""}`;
+}
+
+function yesNo(value: boolean | null | undefined): "Yes" | "No" {
+  return value ? "Yes" : "No";
 }
 
 export function createServiceClient() {
@@ -169,6 +224,8 @@ export async function fetchReceiptPayload(
       reference_no,
       submitted_at,
       acknowledged_at,
+      submitted_by,
+      acknowledged_by,
       receipt_no,
       sabhas:sabha_id (
         name,
@@ -178,8 +235,14 @@ export async function fetchReceiptPayload(
         payer_email,
         payer_mobile,
         address_multiline,
+        opt_show_amount_in_directory,
+        opt_show_mobile_in_directory,
+        opt_show_email_in_directory,
         family_members (
           full_name,
+          age,
+          gender,
+          gotra,
           amount,
           is_primary_payer
         )
@@ -214,6 +277,30 @@ export async function fetchReceiptPayload(
     return sum + (Number.isFinite(amount) ? amount : 0);
   }, 0);
 
+  const submittedBy = optionalTrimmed(data?.submitted_by);
+  const acknowledgedBy = optionalTrimmed(data?.acknowledged_by);
+
+  let pratinidhiName = "-";
+  let treasurerName = "-";
+
+  if (submittedBy) {
+    const { data: submittedByProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", submittedBy)
+      .maybeSingle();
+    pratinidhiName = optionalTrimmed(submittedByProfile?.full_name) || "-";
+  }
+
+  if (acknowledgedBy) {
+    const { data: acknowledgedByProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", acknowledgedBy)
+      .maybeSingle();
+    treasurerName = optionalTrimmed(acknowledgedByProfile?.full_name) || "-";
+  }
+
   return {
     entryId: data.id,
     receiptNo,
@@ -222,12 +309,19 @@ export async function fetchReceiptPayload(
     referenceNo: optionalTrimmed(data?.reference_no),
     submittedAt: optionalTrimmed(data?.submitted_at),
     acknowledgedAt: optionalTrimmed(data?.acknowledged_at),
+    submittedBy,
+    acknowledgedBy,
     payerEmail,
     payerMobile: optionalTrimmed(family?.payer_mobile),
     payerName,
     address: optionalTrimmed(family?.address_multiline),
     sabhaName: optionalTrimmed(sabha?.name) || "-",
     sabhaCode: optionalTrimmed(sabha?.code),
+    optShowAmountInDirectory: yesNo(family?.opt_show_amount_in_directory),
+    optShowMobileInDirectory: yesNo(family?.opt_show_mobile_in_directory),
+    optShowEmailInDirectory: yesNo(family?.opt_show_email_in_directory),
+    pratinidhiName,
+    treasurerName,
     totalAmount,
     members,
   };
@@ -238,97 +332,206 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
   const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const pageWidth = page.getWidth();
 
-  let y = 800;
+  let y = 812;
   const left = 48;
-  const lineGap = 16;
+  const right = pageWidth - 48;
+  const lineGap = 14;
+  const paidBy = payload.paidBy || "-";
+  const referenceNo = payload.referenceNo || (paidBy === "Cash" ? "Not Applicable" : "-");
+  const receiptDate = formatDate(payload.acknowledgedAt || payload.submittedAt);
+  const amountInWords = numberToWords(Math.round(payload.totalAmount));
 
-  page.drawText("Shri Chitrapur Math - Digital Vantiga Receipt", {
+  page.drawText("Shri Chitrapur Math", {
     x: left,
     y,
-    size: 16,
+    size: 17,
     font: titleFont,
     color: rgb(0.1, 0.1, 0.1),
   });
-
-  y -= lineGap + 8;
-  page.drawText(`Receipt No: ${payload.receiptNo}`, { x: left, y, size: 11, font: bodyFont });
   y -= lineGap;
-  page.drawText(`Sabha: ${payload.sabhaName}${payload.sabhaCode ? ` (${payload.sabhaCode})` : ""}`, {
-    x: left,
-    y,
-    size: 11,
-    font: bodyFont,
-  });
-  y -= lineGap;
-  page.drawText(`FY: ${payload.fy}`, { x: left, y, size: 11, font: bodyFont });
-  y -= lineGap;
-  page.drawText(`Payment Mode: ${payload.paidBy}`, { x: left, y, size: 11, font: bodyFont });
-
-  if (payload.referenceNo) {
-    y -= lineGap;
-    page.drawText(`Reference No: ${payload.referenceNo}`, { x: left, y, size: 11, font: bodyFont });
-  }
-
-  y -= lineGap;
-  page.drawText(`Date: ${formatDate(payload.acknowledgedAt || payload.submittedAt)}`, {
-    x: left,
-    y,
-    size: 11,
-    font: bodyFont,
-  });
-
-  y -= lineGap + 8;
-  page.drawText(`Payer Name: ${payload.payerName}`, { x: left, y, size: 11, font: bodyFont });
-  y -= lineGap;
-  page.drawText(`Payer Email: ${payload.payerEmail}`, { x: left, y, size: 11, font: bodyFont });
-  y -= lineGap;
-  page.drawText(`Payer Mobile: ${payload.payerMobile || "-"}`, { x: left, y, size: 11, font: bodyFont });
-
-  if (payload.address) {
-    y -= lineGap;
-    page.drawText(`Address: ${payload.address.replaceAll("\n", ", ")}`, {
-      x: left,
-      y,
-      size: 11,
-      font: bodyFont,
-    });
-  }
-
-  y -= lineGap + 8;
-  page.drawText(`Total Amount: INR ${formatAmount(payload.totalAmount)}`, {
-    x: left,
-    y,
-    size: 12,
-    font: titleFont,
-  });
-
-  y -= lineGap + 6;
-  page.drawText("Members:", {
-    x: left,
-    y,
-    size: 11,
-    font: titleFont,
-  });
-
-  for (const member of payload.members) {
-    y -= lineGap;
-    if (y < 80) break;
-    const name = optionalTrimmed(member?.full_name) || "Member";
-    const amount = Number(member?.amount || 0);
-    page.drawText(`- ${name}: INR ${formatAmount(Number.isFinite(amount) ? amount : 0)}`, {
-      x: left + 8,
-      y,
-      size: 10,
-      font: bodyFont,
-    });
-  }
-
-  y -= lineGap + 10;
-  page.drawText("No signature required. This is a system-generated receipt.", {
+  page.drawText("Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354", {
     x: left,
     y,
     size: 9,
+    font: bodyFont,
+  });
+  y -= lineGap - 2;
+  page.drawText("Email: accts.shirali@chitrapurmath.in    GSTN: 29AAATS5030Q1Z0", {
+    x: left,
+    y,
+    size: 9,
+    font: bodyFont,
+  });
+
+  y -= lineGap + 2;
+  page.drawLine({
+    start: { x: left, y },
+    end: { x: right, y },
+    thickness: 1,
+    color: rgb(0.75, 0.75, 0.75),
+  });
+
+  y -= lineGap + 2;
+  page.drawText("Digital Vantiga Receipt", {
+    x: left,
+    y,
+    size: 13,
+    font: titleFont,
+  });
+  y -= lineGap;
+  page.drawText(`Collecting Local Sabha: ${payload.sabhaName}`, {
+    x: left,
+    y,
+    size: 10,
+    font: titleFont,
+  });
+
+  page.drawText(`Receipt number: ${payload.receiptNo}`, {
+    x: right - 220,
+    y,
+    size: 10,
+    font: bodyFont,
+  });
+  y -= lineGap;
+  page.drawText(`Date: ${receiptDate}`, { x: right - 220, y, size: 10, font: bodyFont });
+
+  y -= lineGap;
+  page.drawLine({
+    start: { x: left, y },
+    end: { x: right, y },
+    thickness: 1,
+    color: rgb(0.75, 0.75, 0.75),
+  });
+
+  y -= lineGap + 1;
+  page.drawText(`Received From: ${payload.payerName} for the purpose of Vantiga for Year: ${payload.fy}`, {
+    x: left,
+    y,
+    size: 10,
+    font: bodyFont,
+  });
+
+  y -= lineGap;
+  page.drawText(`Address: ${payload.address || "-"}`, { x: left, y, size: 9.5, font: bodyFont });
+  y -= lineGap;
+  page.drawText(`Mobile Number: ${payload.payerMobile ? `+91 ${payload.payerMobile}` : "-"}`, {
+    x: left,
+    y,
+    size: 9.5,
+    font: bodyFont,
+  });
+  page.drawText(`Email ID: ${payload.payerEmail}`, {
+    x: right - 220,
+    y,
+    size: 9.5,
+    font: bodyFont,
+  });
+
+  y -= lineGap;
+  page.drawText("Vantiga Payer Details:", {
+    x: left,
+    y,
+    size: 10.5,
+    font: titleFont,
+  });
+
+  y -= lineGap;
+  page.drawText("Name", { x: left + 2, y, size: 9, font: titleFont });
+  page.drawText("Age", { x: left + 210, y, size: 9, font: titleFont });
+  page.drawText("Gender", { x: left + 245, y, size: 9, font: titleFont });
+  page.drawText("Gotra", { x: left + 300, y, size: 9, font: titleFont });
+  page.drawText("Amount", { x: right - 60, y, size: 9, font: titleFont });
+
+  y -= 4;
+  page.drawLine({
+    start: { x: left, y },
+    end: { x: right, y },
+    thickness: 1,
+    color: rgb(0.75, 0.75, 0.75),
+  });
+
+  const rowCount = Math.max(5, payload.members.length);
+  for (let i = 0; i < rowCount; i += 1) {
+    const member = payload.members[i];
+    y -= 12;
+    if (y < 110) break;
+
+    page.drawText(member?.full_name || "", { x: left + 2, y, size: 9, font: bodyFont });
+    page.drawText(member?.age != null ? String(member.age) : "", { x: left + 210, y, size: 9, font: bodyFont });
+    page.drawText(member?.gender || "", { x: left + 245, y, size: 9, font: bodyFont });
+    page.drawText(member?.gotra || "", { x: left + 300, y, size: 9, font: bodyFont });
+    page.drawText(member ? formatAmountIndian(Number(member.amount || 0)) : "", {
+      x: right - 60,
+      y,
+      size: 9,
+      font: bodyFont,
+    });
+  }
+
+  y -= 12;
+  page.drawLine({
+    start: { x: left, y: y + 10 },
+    end: { x: right, y: y + 10 },
+    thickness: 1,
+    color: rgb(0.75, 0.75, 0.75),
+  });
+
+  page.drawText("TOTAL", {
+    x: right - 140,
+    y,
+    size: 9,
+    font: titleFont,
+  });
+  page.drawText(formatAmountIndian(payload.totalAmount), {
+    x: right - 60,
+    y,
+    size: 9,
+    font: titleFont,
+  });
+
+  y -= lineGap;
+  page.drawText(`AMOUNT IN WORDS: Rupees ${amountInWords} Only`, {
+    x: left,
+    y,
+    size: 9.5,
+    font: titleFont,
+  });
+
+  y -= lineGap + 1;
+  page.drawText(`Payment Mode: ${paidBy}`, {
+    x: left,
+    y,
+    size: 9.5,
+    font: bodyFont,
+  });
+  y -= lineGap;
+  page.drawText(`Reference Number: ${referenceNo}`, { x: left, y, size: 9.5, font: bodyFont });
+
+  y -= lineGap + 2;
+  page.drawText("Opt to Show in Vantiga Directory:", {
+    x: left,
+    y,
+    size: 9.5,
+    font: titleFont,
+  });
+  y -= lineGap;
+  page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, { x: left, y, size: 9, font: bodyFont });
+  page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, { x: left + 170, y, size: 9, font: bodyFont });
+  page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, { x: left + 340, y, size: 9, font: bodyFont });
+
+  y -= lineGap + 4;
+  page.drawText("Pratinidhi Name:", { x: left, y, size: 9.5, font: titleFont });
+  page.drawText(payload.pratinidhiName, { x: left + 90, y, size: 9.5, font: bodyFont });
+  page.drawText("Treasurer Name:", { x: left + 280, y, size: 9.5, font: titleFont });
+  page.drawText(payload.treasurerName, { x: left + 370, y, size: 9.5, font: bodyFont });
+
+  y -= lineGap + 2;
+  page.drawText("No Signature required as this is a computer generated receipt", {
+    x: left,
+    y,
+    size: 8.5,
     font: bodyFont,
     color: rgb(0.25, 0.25, 0.25),
   });
@@ -357,7 +560,7 @@ export async function sendViaResend(
       <p><strong>Receipt Number:</strong> ${escapeHtml(payload.receiptNo)}<br/>
       <strong>Payer Name:</strong> ${safePayerName}<br/>
       <strong>Sabha:</strong> ${safeSabhaName}<br/>
-      <strong>Total Amount:</strong> INR ${formatAmount(payload.totalAmount)}</p>
+      <strong>Total Amount:</strong> INR ${formatAmountIndian(payload.totalAmount)}</p>
       <p>Regards,<br/>Shri Chitrapur Math</p>
     </div>
   `;
