@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import Button from '../../components/ui/Button';
 import CommonHeader from 'components/ui/CommonHeader';
 import { supabase } from '../../supabaseClient';
@@ -352,8 +350,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   };
 
   const handleDownloadPdf = async () => {
-    const receiptSheet = receiptSheetRef.current;
-    if (!receiptSheet || isDownloadingPdf) return;
+    if (isDownloadingPdf) return;
 
     try {
       setIsDownloadingPdf(true);
@@ -375,31 +372,7 @@ const ReceiptPreview = ({ standalone = false }) => {
         downloadBlob(blob, filename);
         return;
       }
-
-      const canvas = await html2canvas(receiptSheet, {
-        backgroundColor: '#ffffff',
-        scale: Math.min(window.devicePixelRatio || 2, 3),
-        useCORS: true
-      });
-
-      const imageData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const maxWidth = 186;
-      const maxHeight = 273;
-      let imageWidth = maxWidth;
-      let imageHeight = (canvas.height * imageWidth) / canvas.width;
-
-      if (imageHeight > maxHeight) {
-        imageHeight = maxHeight;
-        imageWidth = (canvas.width * imageHeight) / canvas.height;
-      }
-
-      const x = (pageWidth - imageWidth) / 2;
-      const y = 12;
-      pdf.addImage(imageData, 'PNG', x, y, imageWidth, imageHeight, undefined, 'FAST');
-      pdf.save(`${toReceiptFileSafeName(entry?.receiptNo)}.pdf`);
+      throw new Error('Receipt number is missing; PDF cannot be generated.');
     } catch (error) {
       console.error('Failed to generate receipt PDF:', error);
       window.alert('Unable to download receipt right now. Please try again.');

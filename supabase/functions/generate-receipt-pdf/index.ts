@@ -1,10 +1,15 @@
 import {
-  buildReceiptPdf,
   createServiceClient,
-  fetchReceiptPayload,
+  generateReceiptPdfForEntry,
 } from "../_shared/receipt-email.ts";
 
-const jsonHeaders = { "Content-Type": "application/json" };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const jsonHeaders = { "Content-Type": "application/json", ...corsHeaders };
 
 function fileSafeReceiptName(receiptNo: string): string {
   const normalized = receiptNo.replace(/[\\/:*?"<>|]+/g, "-").trim();
@@ -12,6 +17,10 @@ function fileSafeReceiptName(receiptNo: string): string {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({ ok: false, error: "Only POST is allowed." }),
@@ -32,8 +41,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createServiceClient();
-    const payload = await fetchReceiptPayload(supabase, entryId, receiptNo);
-    const pdfBase64 = await buildReceiptPdf(payload);
+    const { payload, pdfBase64 } = await generateReceiptPdfForEntry(supabase, entryId, receiptNo);
     const filename = fileSafeReceiptName(payload.receiptNo);
 
     return new Response(
@@ -54,4 +62,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-

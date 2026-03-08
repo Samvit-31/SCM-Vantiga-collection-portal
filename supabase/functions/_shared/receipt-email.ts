@@ -49,9 +49,9 @@ interface ReceiptPayload {
 }
 
 const EMAIL_BODY_COPY = `
-Namaskar,
+Jai Shankar,
 
-Thank you for your contribution. Please find your digital receipt attached as a PDF.
+Thank you for your contribution. Please find your Digital Vantiga receipt attached as a PDF.
 Keep this receipt for your records and future reference.
 
 If you have any questions, please contact your Sabha representative.
@@ -238,6 +238,9 @@ export async function fetchReceiptPayload(
         opt_show_amount_in_directory,
         opt_show_mobile_in_directory,
         opt_show_email_in_directory,
+        sabhas:sabha_id (
+          name
+        ),
         family_members (
           full_name,
           age,
@@ -260,6 +263,7 @@ export async function fetchReceiptPayload(
 
   const family = Array.isArray(data?.families) ? data.families[0] : data?.families;
   const sabha = Array.isArray(data?.sabhas) ? data.sabhas[0] : data?.sabhas;
+  const familySabha = Array.isArray(family?.sabhas) ? family.sabhas[0] : family?.sabhas;
   const members = Array.isArray(family?.family_members) ? family.family_members : [];
 
   const payerEmail = optionalTrimmed(family?.payer_email);
@@ -315,7 +319,8 @@ export async function fetchReceiptPayload(
     payerMobile: optionalTrimmed(family?.payer_mobile),
     payerName,
     address: optionalTrimmed(family?.address_multiline),
-    sabhaName: optionalTrimmed(sabha?.name) || "-",
+    // Keep this in sync with receipt preview, which prefers family->sabha.
+    sabhaName: optionalTrimmed(familySabha?.name) || optionalTrimmed(sabha?.name) || "-",
     sabhaCode: optionalTrimmed(sabha?.code),
     optShowAmountInDirectory: yesNo(family?.opt_show_amount_in_directory),
     optShowMobileInDirectory: yesNo(family?.opt_show_mobile_in_directory),
@@ -333,208 +338,295 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const pageWidth = page.getWidth();
+  const pageHeight = page.getHeight();
 
-  let y = 812;
-  const left = 48;
-  const right = pageWidth - 48;
-  const lineGap = 14;
+  const left = 34;
+  const right = pageWidth - 34;
+  const contentWidth = right - left;
+  const horizontalPad = 12;
+  const borderColor = rgb(0.78, 0.82, 0.86);
+  const sectionBg = rgb(0.95, 0.96, 0.98);
+  let y = pageHeight - 36;
+
   const paidBy = payload.paidBy || "-";
   const referenceNo = payload.referenceNo || (paidBy === "Cash" ? "Not Applicable" : "-");
   const receiptDate = formatDate(payload.acknowledgedAt || payload.submittedAt);
   const amountInWords = numberToWords(Math.round(payload.totalAmount));
+  const payerMobile = payload.payerMobile ? `+91 ${payload.payerMobile}` : "-";
+  const address = payload.address || "-";
+  const tableRows = [...payload.members, ...Array(Math.max(0, 5 - payload.members.length)).fill(null)];
 
+  const row = (height: number) => {
+    const top = y;
+    const bottom = y - height;
+    y = bottom;
+    return { top, bottom, height };
+  };
+
+  const drawSectionBox = (topY: number, height: number, fill = false) => {
+    page.drawRectangle({
+      x: left,
+      y: topY - height,
+      width: contentWidth,
+      height,
+      borderColor,
+      borderWidth: 1,
+      color: fill ? sectionBg : undefined,
+    });
+  };
+
+  const drawRightText = (text: string, x: number, yText: number, fontSize: number, bold = false) => {
+    const font = bold ? titleFont : bodyFont;
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    page.drawText(text, { x: x - textWidth, y: yText, size: fontSize, font });
+  };
+
+  const drawWrapped = (
+    text: string,
+    x: number,
+    yTop: number,
+    maxWidth: number,
+    fontSize: number,
+    lineHeight: number,
+    bold = false,
+  ) => {
+    const font = bold ? titleFont : bodyFont;
+    const words = String(text || "-").split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(next, fontSize) <= maxWidth) {
+        current = next;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    lines.forEach((line, idx) => {
+      page.drawText(line, { x, y: yTop - idx * lineHeight, size: fontSize, font });
+    });
+    return lines.length;
+  };
+
+  page.drawRectangle({
+    x: left,
+    y: 36,
+    width: contentWidth,
+    height: pageHeight - 72,
+    borderColor,
+    borderWidth: 1,
+  });
+
+  const header = row(84);
+  drawSectionBox(header.top, header.height);
   page.drawText("Shri Chitrapur Math", {
-    x: left,
-    y,
-    size: 17,
+    x: left + (contentWidth / 2) - 84,
+    y: header.top - 24,
+    size: 19,
     font: titleFont,
-    color: rgb(0.1, 0.1, 0.1),
+    color: rgb(0.05, 0.05, 0.05),
   });
-  y -= lineGap;
   page.drawText("Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354", {
-    x: left,
-    y,
-    size: 9,
+    x: left + (contentWidth / 2) - 138,
+    y: header.top - 42,
+    size: 10,
     font: bodyFont,
   });
-  y -= lineGap - 2;
   page.drawText("Email: accts.shirali@chitrapurmath.in    GSTN: 29AAATS5030Q1Z0", {
-    x: left,
-    y,
-    size: 9,
+    x: left + (contentWidth / 2) - 121,
+    y: header.top - 58,
+    size: 9.5,
     font: bodyFont,
   });
 
-  y -= lineGap + 2;
-  page.drawLine({
-    start: { x: left, y },
-    end: { x: right, y },
-    thickness: 1,
-    color: rgb(0.75, 0.75, 0.75),
-  });
-
-  y -= lineGap + 2;
+  const summary = row(56);
+  drawSectionBox(summary.top, summary.height);
   page.drawText("Digital Vantiga Receipt", {
-    x: left,
-    y,
-    size: 13,
+    x: left + horizontalPad,
+    y: summary.top - 20,
+    size: 15,
     font: titleFont,
   });
-  y -= lineGap;
   page.drawText(`Collecting Local Sabha: ${payload.sabhaName}`, {
-    x: left,
-    y,
+    x: left + horizontalPad,
+    y: summary.top - 36,
     size: 10,
     font: titleFont,
   });
+  drawRightText(`Receipt number: ${payload.receiptNo}`, right - horizontalPad, summary.top - 20, 10, true);
+  drawRightText(`Date: ${receiptDate}`, right - horizontalPad, summary.top - 36, 10, true);
 
-  page.drawText(`Receipt number: ${payload.receiptNo}`, {
-    x: right - 220,
-    y,
-    size: 10,
-    font: bodyFont,
+  const received = row(30);
+  drawSectionBox(received.top, received.height);
+  page.drawText("Received From:", {
+    x: left + horizontalPad,
+    y: received.top - 18,
+    size: 10.5,
+    font: titleFont,
   });
-  y -= lineGap;
-  page.drawText(`Date: ${receiptDate}`, { x: right - 220, y, size: 10, font: bodyFont });
-
-  y -= lineGap;
-  page.drawLine({
-    start: { x: left, y },
-    end: { x: right, y },
-    thickness: 1,
-    color: rgb(0.75, 0.75, 0.75),
-  });
-
-  y -= lineGap + 1;
-  page.drawText(`Received From: ${payload.payerName} for the purpose of Vantiga for Year: ${payload.fy}`, {
-    x: left,
-    y,
+  page.drawText(`${payload.payerName} for the purpose of Vantiga for Year: ${payload.fy}`, {
+    x: left + 92,
+    y: received.top - 18,
     size: 10,
     font: bodyFont,
   });
 
-  y -= lineGap;
-  page.drawText(`Address: ${payload.address || "-"}`, { x: left, y, size: 9.5, font: bodyFont });
-  y -= lineGap;
-  page.drawText(`Mobile Number: ${payload.payerMobile ? `+91 ${payload.payerMobile}` : "-"}`, {
-    x: left,
-    y,
+  const contact = row(56);
+  drawSectionBox(contact.top, contact.height);
+  page.drawText("Address:", { x: left + horizontalPad, y: contact.top - 18, size: 10, font: titleFont });
+  drawWrapped(address.replaceAll("\n", " "), left + 62, contact.top - 18, contentWidth - 80, 9.5, 11);
+  page.drawText("Mobile Number:", {
+    x: left + horizontalPad,
+    y: contact.top - 40,
+    size: 10,
+    font: titleFont,
+  });
+  page.drawText(payerMobile, {
+    x: left + 92,
+    y: contact.top - 40,
     size: 9.5,
     font: bodyFont,
   });
-  page.drawText(`Email ID: ${payload.payerEmail}`, {
-    x: right - 220,
-    y,
-    size: 9.5,
-    font: bodyFont,
-  });
+  drawRightText(`Email ID: ${payload.payerEmail}`, right - horizontalPad, contact.top - 40, 9.5, false);
 
-  y -= lineGap;
+  const detailsLabel = row(22);
+  drawSectionBox(detailsLabel.top, detailsLabel.height);
   page.drawText("Vantiga Payer Details:", {
-    x: left,
-    y,
+    x: left + horizontalPad,
+    y: detailsLabel.top - 15,
     size: 10.5,
     font: titleFont,
   });
 
-  y -= lineGap;
-  page.drawText("Name", { x: left + 2, y, size: 9, font: titleFont });
-  page.drawText("Age", { x: left + 210, y, size: 9, font: titleFont });
-  page.drawText("Gender", { x: left + 245, y, size: 9, font: titleFont });
-  page.drawText("Gotra", { x: left + 300, y, size: 9, font: titleFont });
-  page.drawText("Amount", { x: right - 60, y, size: 9, font: titleFont });
+  const tableTop = y;
+  const tableHeight = 148;
+  drawSectionBox(tableTop, tableHeight);
+  const col1 = left + 10;
+  const col2 = left + contentWidth * 0.52;
+  const col3 = left + contentWidth * 0.62;
+  const col4 = left + contentWidth * 0.74;
+  const tableRight = right - 10;
+  const headerY = tableTop - 16;
+  const rowHeight = 20;
 
-  y -= 4;
+  page.drawText("Name", { x: col1, y: headerY, size: 9.5, font: titleFont });
+  page.drawText("Age", { x: col2, y: headerY, size: 9.5, font: titleFont });
+  page.drawText("Gender", { x: col3, y: headerY, size: 9.5, font: titleFont });
+  page.drawText("Gotra", { x: col4, y: headerY, size: 9.5, font: titleFont });
+  drawRightText("Amount", tableRight, headerY, 9.5, true);
+
   page.drawLine({
-    start: { x: left, y },
-    end: { x: right, y },
+    start: { x: left + 2, y: tableTop - 22 },
+    end: { x: right - 2, y: tableTop - 22 },
     thickness: 1,
-    color: rgb(0.75, 0.75, 0.75),
+    color: borderColor,
   });
 
-  const rowCount = Math.max(5, payload.members.length);
-  for (let i = 0; i < rowCount; i += 1) {
-    const member = payload.members[i];
-    y -= 12;
-    if (y < 110) break;
+  tableRows.forEach((member, idx) => {
+    const rowY = tableTop - 22 - (idx + 1) * rowHeight + 6;
+    page.drawText(member?.full_name || "", { x: col1, y: rowY, size: 9, font: bodyFont });
+    page.drawText(member?.age != null ? String(member.age) : "", { x: col2, y: rowY, size: 9, font: bodyFont });
+    page.drawText(member?.gender || "", { x: col3, y: rowY, size: 9, font: bodyFont });
+    page.drawText(member?.gotra || "", { x: col4, y: rowY, size: 9, font: bodyFont });
+    drawRightText(member ? formatAmountIndian(Number(member.amount || 0)) : "", tableRight, rowY, 9, false);
 
-    page.drawText(member?.full_name || "", { x: left + 2, y, size: 9, font: bodyFont });
-    page.drawText(member?.age != null ? String(member.age) : "", { x: left + 210, y, size: 9, font: bodyFont });
-    page.drawText(member?.gender || "", { x: left + 245, y, size: 9, font: bodyFont });
-    page.drawText(member?.gotra || "", { x: left + 300, y, size: 9, font: bodyFont });
-    page.drawText(member ? formatAmountIndian(Number(member.amount || 0)) : "", {
-      x: right - 60,
-      y,
-      size: 9,
-      font: bodyFont,
+    const dividerY = tableTop - 22 - (idx + 1) * rowHeight;
+    page.drawLine({
+      start: { x: left + 2, y: dividerY },
+      end: { x: right - 2, y: dividerY },
+      thickness: 0.7,
+      color: rgb(0.88, 0.9, 0.92),
     });
-  }
-
-  y -= 12;
-  page.drawLine({
-    start: { x: left, y: y + 10 },
-    end: { x: right, y: y + 10 },
-    thickness: 1,
-    color: rgb(0.75, 0.75, 0.75),
   });
 
-  page.drawText("TOTAL", {
-    x: right - 140,
-    y,
-    size: 9,
-    font: titleFont,
-  });
-  page.drawText(formatAmountIndian(payload.totalAmount), {
-    x: right - 60,
-    y,
-    size: 9,
-    font: titleFont,
-  });
+  const totalY = tableTop - 22 - tableRows.length * rowHeight - 16;
+  page.drawText("TOTAL", { x: col4, y: totalY, size: 9.5, font: titleFont });
+  drawRightText(formatAmountIndian(payload.totalAmount), tableRight, totalY, 9.5, true);
+  y = tableTop - tableHeight;
 
-  y -= lineGap;
+  const words = row(24);
+  drawSectionBox(words.top, words.height);
   page.drawText(`AMOUNT IN WORDS: Rupees ${amountInWords} Only`, {
-    x: left,
-    y,
-    size: 9.5,
+    x: left + horizontalPad,
+    y: words.top - 16,
+    size: 10,
     font: titleFont,
   });
 
-  y -= lineGap + 1;
+  const payment = row(42);
+  drawSectionBox(payment.top, payment.height);
   page.drawText(`Payment Mode: ${paidBy}`, {
-    x: left,
-    y,
+    x: left + horizontalPad,
+    y: payment.top - 16,
+    size: 10,
+    font: bodyFont,
+  });
+  page.drawText(`Reference Number: ${referenceNo}`, {
+    x: left + horizontalPad,
+    y: payment.top - 32,
+    size: 10,
+    font: bodyFont,
+  });
+
+  const directory = row(62);
+  drawSectionBox(directory.top, directory.height, true);
+  page.drawText("Opt to Show in Vantiga Directory:", {
+    x: left + horizontalPad,
+    y: directory.top - 16,
+    size: 10,
+    font: titleFont,
+  });
+  page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, {
+    x: left + horizontalPad,
+    y: directory.top - 32,
     size: 9.5,
     font: bodyFont,
   });
-  y -= lineGap;
-  page.drawText(`Reference Number: ${referenceNo}`, { x: left, y, size: 9.5, font: bodyFont });
-
-  y -= lineGap + 2;
-  page.drawText("Opt to Show in Vantiga Directory:", {
-    x: left,
-    y,
+  page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, {
+    x: left + 190,
+    y: directory.top - 32,
     size: 9.5,
-    font: titleFont,
+    font: bodyFont,
   });
-  y -= lineGap;
-  page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, { x: left, y, size: 9, font: bodyFont });
-  page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, { x: left + 170, y, size: 9, font: bodyFont });
-  page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, { x: left + 340, y, size: 9, font: bodyFont });
-
-  y -= lineGap + 4;
-  page.drawText("Pratinidhi Name:", { x: left, y, size: 9.5, font: titleFont });
-  page.drawText(payload.pratinidhiName, { x: left + 90, y, size: 9.5, font: bodyFont });
-  page.drawText("Treasurer Name:", { x: left + 280, y, size: 9.5, font: titleFont });
-  page.drawText(payload.treasurerName, { x: left + 370, y, size: 9.5, font: bodyFont });
-
-  y -= lineGap + 2;
-  page.drawText("No Signature required as this is a computer generated receipt", {
-    x: left,
-    y,
+  page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, {
+    x: left + 355,
+    y: directory.top - 32,
+    size: 9.5,
+    font: bodyFont,
+  });
+  page.drawRectangle({
+    x: left + horizontalPad,
+    y: directory.top - 53,
+    width: contentWidth - 2 * horizontalPad,
+    height: 14,
+    color: rgb(0.99, 0.93, 0.62),
+    borderColor: rgb(0.92, 0.84, 0.34),
+    borderWidth: 0.8,
+  });
+  page.drawText("Consent Statement comes here. To be vetted/provided by legal team", {
+    x: left + horizontalPad + 4,
+    y: directory.top - 49,
     size: 8.5,
     font: bodyFont,
-    color: rgb(0.25, 0.25, 0.25),
   });
+
+  const signers = row(40);
+  drawSectionBox(signers.top, signers.height);
+  page.drawText("Pratinidhi Name:", { x: left + horizontalPad, y: signers.top - 18, size: 9.5, font: titleFont });
+  page.drawText(payload.pratinidhiName, { x: left + 102, y: signers.top - 18, size: 9.5, font: bodyFont });
+  drawRightText(`Treasurer Name: ${payload.treasurerName}`, right - horizontalPad, signers.top - 18, 9.5, true);
+
+  const footer = row(22);
+  drawSectionBox(footer.top, footer.height);
+  drawRightText(
+    "No Signature required as this is a computer generated receipt",
+    right - horizontalPad,
+    footer.top - 15,
+    8.5,
+    false,
+  );
 
   const pdfBytes = await pdfDoc.save();
   let binary = "";
@@ -542,6 +634,16 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     binary += String.fromCharCode(byte);
   }
   return btoa(binary);
+}
+
+export async function generateReceiptPdfForEntry(
+  supabase: ReturnType<typeof createServiceClient>,
+  entryId: string,
+  receiptNo: string,
+): Promise<{ payload: ReceiptPayload; pdfBase64: string }> {
+  const payload = await fetchReceiptPayload(supabase, entryId, receiptNo);
+  const pdfBase64 = await buildReceiptPdf(payload);
+  return { payload, pdfBase64 };
 }
 
 export async function sendViaResend(
@@ -615,7 +717,8 @@ export async function processReceiptEmail(
 
   let receiptPayload: ReceiptPayload | null = null;
   try {
-    receiptPayload = await fetchReceiptPayload(supabase, entryId, receiptNo);
+    const generated = await generateReceiptPdfForEntry(supabase, entryId, receiptNo);
+    receiptPayload = generated.payload;
 
     await upsertDispatch(supabase, {
       entryId,
@@ -627,8 +730,7 @@ export async function processReceiptEmail(
       providerMessageId: null,
     });
 
-    const pdfBase64 = await buildReceiptPdf(receiptPayload);
-    const providerMessageId = await sendViaResend(receiptPayload, pdfBase64);
+    const providerMessageId = await sendViaResend(receiptPayload, generated.pdfBase64);
 
     await upsertDispatch(supabase, {
       entryId,
