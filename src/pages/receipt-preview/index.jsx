@@ -493,12 +493,22 @@ const ReceiptPreview = ({ standalone = false }) => {
               <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
             </div>
 
-            <div className="border-b border-slate-300 px-6 py-2">
-              <div className="text-base font-semibold">Address:</div>
-              <div className="text-sm whitespace-pre-line leading-snug">{address}</div>
+            <div className="border-b border-slate-300 px-6 py-2 space-y-2">
+              <div className="text-base font-semibold">
+                Address: <span className="text-sm whitespace-pre-line leading-snug font-normal">{address}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-base font-semibold">
+                <div>
+                  Mobile Number: <span className="text-sm font-mono font-normal">{payerMobile}</span>
+                </div>
+                <div className="sm:text-right">
+                  Email ID: <span className="text-sm break-all font-mono font-normal">{payerEmail}</span>
+                </div>
+              </div>
             </div>
 
             <div className="px-6 pb-2">
+              <div className="text-base font-semibold mb-1.5">Vantiga Payer Details:</div>
               <div className="border border-slate-300 rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -531,18 +541,6 @@ const ReceiptPreview = ({ standalone = false }) => {
                 AMOUNT IN WORDS: <span className="font-medium"> Rupees</span>
                 <span className="italic font-medium">{amountInWords}</span>
                 <span className="font-medium"> Only</span>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-300 px-6 py-2">
-              <div className="text-base font-semibold">
-                Mobile Number: <span className="text-sm font-mono font-normal">{payerMobile}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-300 px-6 py-2">
-              <div className="text-base font-semibold">
-                Email ID: <span className="text-sm break-all font-mono font-normal">{payerEmail}</span>
               </div>
             </div>
 
