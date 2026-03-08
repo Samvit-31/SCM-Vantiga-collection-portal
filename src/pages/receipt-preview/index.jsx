@@ -487,13 +487,10 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="px-6 py-2.5 border-b border-slate-300 flex items-center justify-between gap-4">
-              <div className="text-base font-semibold">
-                Received From : <span className="font-normal">{primaryPayerName}</span>
-              </div>
-              <div className="text-base font-semibold text-right">
-                Vantiga for year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
-              </div>
+            <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
+              Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
+              <span className="font-semibold">for the purpose of Vantiga for Year:</span>{' '}
+              <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
             </div>
 
             <div className="border-b border-slate-300 px-6 py-2">
