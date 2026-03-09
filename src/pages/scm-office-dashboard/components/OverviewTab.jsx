@@ -297,27 +297,28 @@ const OverviewTab = ({ selectedFY }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={loadOverview}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/30 text-sm"
+            className="inline-flex items-center gap-0 sm:gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/30 text-sm"
             disabled={loading}
           >
             <Icon name="RefreshCw" size={16} />
-            Refresh
+            <span className="sr-only sm:not-sr-only sm:inline">Refresh</span>
           </button>
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setIsExportOpen((prev) => !prev)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/30 text-sm"
+              className="inline-flex items-center gap-0 sm:gap-2 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/30 text-sm"
             >
               <Icon name="Download" size={16} />
-              Export
+              <span className="sr-only sm:not-sr-only sm:inline">Export</span>
             </button>
             {isExportOpen && (
               <div className="absolute right-0 mt-2 w-40 bg-popover border border-border rounded-md shadow-lg z-50">
                 <button
                   onClick={handleExportPdf}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                  className="w-full inline-flex items-center gap-0 sm:gap-2 text-left px-3 py-2 text-sm hover:bg-muted"
                 >
-                  Export PDF
+                  <Icon name="FileText" size={16} />
+                  <span className="sr-only sm:not-sr-only sm:inline">Export PDF</span>
                 </button>
               </div>
             )}
