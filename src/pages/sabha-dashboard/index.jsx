@@ -480,89 +480,100 @@ const SabhaDashboard = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
-              <button
-                onClick={() => setActiveTab('entries')}
-                className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                  activeTab === 'entries'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Entries
-              </button>
-              <button
-                onClick={() => setActiveTab('summary')}
-                className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                  activeTab === 'summary'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Summary
-              </button>
-              {userProfile?.role === 'treasurer' && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
                 <button
-                  onClick={() => setActiveTab('remittances')}
+                  onClick={() => setActiveTab('entries')}
                   className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                    activeTab === 'remittances'
+                    activeTab === 'entries'
                       ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  Remittances
+                  Entries
                 </button>
+                <button
+                  onClick={() => setActiveTab('summary')}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    activeTab === 'summary'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Summary
+                </button>
+                {userProfile?.role === 'treasurer' && (
+                  <button
+                    onClick={() => setActiveTab('remittances')}
+                    className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                      activeTab === 'remittances'
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Remittances
+                  </button>
+                )}
+              </div>
+
+              {userProfile?.role === 'pratinidhi' && (
+                <div className="flex flex-col items-end gap-1">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    onClick={handleNewEntry}
+                    iconName="Plus"
+                    iconPosition="left"
+                    className= "bg-[#F97316] text-white"
+                  >
+                    New Entry
+                  </Button>
+                  <p className="hidden text-xs text-muted-foreground sm:block">
+                    New Entry opens with selected FY prefilled; you can change FY in the form.
+                  </p>
+                </div>
+              )}
+              {userProfile?.role === 'treasurer' && (
+                <div className="relative" ref={exportRef}>
+                  <button
+                    onClick={() => !isExportDisabled && setIsExportOpen((prev) => !prev)}
+                    disabled={isExportDisabled}
+                    className={`inline-flex items-center gap-0 sm:gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm ${
+                      isExportDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/30'
+                    }`}
+                  >
+                    <Icon name="Download" size={16} />
+                    <span className="sr-only sm:not-sr-only sm:inline">Export</span>
+                  </button>
+                  {isExportOpen && !isExportDisabled && (
+                    <div className="absolute right-0 mt-2 w-40 bg-popover border border-border rounded-md shadow-lg z-50">
+                      <button
+                        onClick={handleExportPdf}
+                        className="w-full inline-flex items-center gap-0 sm:gap-2 text-left px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        <Icon name="FileText" size={16} />
+                        <span className="sr-only sm:not-sr-only sm:inline">Export PDF</span>
+                      </button>
+                      <button
+                        onClick={handleExportCsv}
+                        className="w-full inline-flex items-center gap-0 sm:gap-2 text-left px-3 py-2 text-sm hover:bg-muted"
+                      >
+                        <Icon name="Download" size={16} />
+                        <span className="sr-only sm:not-sr-only sm:inline">Export CSV</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
             {userProfile?.role === 'pratinidhi' && (
-              <div className="flex flex-col items-end gap-1">
-                <Button
-                  variant="outline"
-                  size="default"
-                  onClick={handleNewEntry}
-                  iconName="Plus"
-                  iconPosition="left"
-                  className= "bg-[#F97316] text-white"
-                >
-                  New Entry
-                </Button>
-                <p className="text-xs text-muted-foreground">
+              <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground sm:hidden">
+                <Icon name="Info" size={14} className="mt-0.5 shrink-0" />
+                <p>
                   New Entry opens with selected FY prefilled; you can change FY in the form.
                 </p>
-              </div>
-            )}
-            {userProfile?.role === 'treasurer' && (
-              <div className="relative" ref={exportRef}>
-                <button
-                  onClick={() => !isExportDisabled && setIsExportOpen((prev) => !prev)}
-                  disabled={isExportDisabled}
-                  className={`inline-flex items-center gap-0 sm:gap-2 px-3 py-2 rounded-md border border-border bg-card text-sm ${
-                    isExportDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/30'
-                  }`}
-                >
-                  <Icon name="Download" size={16} />
-                  <span className="sr-only sm:not-sr-only sm:inline">Export</span>
-                </button>
-                {isExportOpen && !isExportDisabled && (
-                  <div className="absolute right-0 mt-2 w-40 bg-popover border border-border rounded-md shadow-lg z-50">
-                    <button
-                      onClick={handleExportPdf}
-                      className="w-full inline-flex items-center gap-0 sm:gap-2 text-left px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <Icon name="FileText" size={16} />
-                      <span className="sr-only sm:not-sr-only sm:inline">Export PDF</span>
-                    </button>
-                    <button
-                      onClick={handleExportCsv}
-                      className="w-full inline-flex items-center gap-0 sm:gap-2 text-left px-3 py-2 text-sm hover:bg-muted"
-                    >
-                      <Icon name="Download" size={16} />
-                      <span className="sr-only sm:not-sr-only sm:inline">Export CSV</span>
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
