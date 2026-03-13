@@ -11,6 +11,7 @@ import {
   getFinancialYearOptions,
   isValidFinancialYear
 } from '../../utils/financialYear';
+import { formatReceiptNumber } from '../../utils/receiptNumber';
 
 // ✅ ADD: Supabase client
 import { supabase } from "../../supabaseClient";
@@ -28,7 +29,7 @@ export async function getUserSabhaContextOrThrow() {
     .select(`
       role,
       sabha_id,
-      sabhas:sabha_id ( id, code, name )
+      sabhas:sabha_id ( id, code, receipt_code, name )
     `)
     .eq("user_id", uid)
     .eq("is_active", true);
@@ -48,6 +49,7 @@ export async function getUserSabhaContextOrThrow() {
     sabhaId: pratinidhiRow.sabha_id,
     sabhaName: pratinidhiRow.sabhas?.name,
     sabhaCode: pratinidhiRow.sabhas?.code,
+    receiptCode: pratinidhiRow.sabhas?.receipt_code,
   };
 }
 
@@ -219,30 +221,31 @@ const NewEntryForm = () => {
   ]);
 
   // ✅ FY helper (you can later calculate FY dynamically)
-  const resolveSabhaCode = async () => {
-    if (userProfile?.sabhaCode) return userProfile.sabhaCode;
+  const resolveReceiptCode = async () => {
+    if (userProfile?.receiptCode) return userProfile.receiptCode;
 
     const cachedProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (cachedProfile?.receiptCode) return cachedProfile.receiptCode;
     if (cachedProfile?.sabhaCode) return cachedProfile.sabhaCode;
 
     if (!userProfile?.sabhaId) return 'SABHA';
 
     const { data, error } = await supabase
       .from('sabhas')
-      .select('code')
+      .select('receipt_code, code')
       .eq('id', userProfile.sabhaId)
       .single();
 
     if (error) {
-      console.warn('Failed to resolve sabha code for receipt number:', error);
+      console.warn('Failed to resolve receipt code for receipt number:', error);
       return 'SABHA';
     }
 
-    return data?.code || 'SABHA';
+    return data?.receipt_code || data?.code || 'SABHA';
   };
 
   const generateReceiptNumberForCashEntry = async (fy) => {
-    const sabhaCode = await resolveSabhaCode();
+    const receiptCode = await resolveReceiptCode();
 
     const { count, error } = await supabase
       .from('vantiga_entries')
@@ -254,8 +257,7 @@ const NewEntryForm = () => {
     if (error) throw error;
 
     const nextNumber = Number(count || 0) + 1;
-    const paddedNumber = String(nextNumber).padStart(6, '0');
-    return `${sabhaCode}/${fy}/${paddedNumber}`;
+    return formatReceiptNumber(receiptCode, nextNumber);
   };
 
   const checkForDuplicates = async () => {

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 import { fetchEntriesForSabhaFY } from "../../../db/entries";
 import { supabase } from "../../../supabaseClient";
+import { formatReceiptNumber } from "../../../utils/receiptNumber";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "All Status" },
@@ -37,7 +38,7 @@ const getStatusColor = (status) => {
 const EntriesList = forwardRef(({
   selectedFY,
   sabhaId,
-  sabhaCode,
+  receiptCode,
   userRole,
   currentUserId,
   onEntriesUpdate,
@@ -71,16 +72,16 @@ const EntriesList = forwardRef(({
     }
   }, [currentUserId]);
 
-  // Fallback sabhaCode from localStorage profile if not provided
-  const effectiveSabhaCode = useMemo(() => {
-    if (sabhaCode) return sabhaCode;
+  // Fallback receiptCode from localStorage profile if not provided
+  const effectiveReceiptCode = useMemo(() => {
+    if (receiptCode) return receiptCode;
     try {
       const p = JSON.parse(localStorage.getItem("userProfile") || "{}");
-      return p?.sabhaCode || "SABHA";
+      return p?.receiptCode || p?.sabhaCode || "SABHA";
     } catch {
       return "SABHA";
     }
-  }, [sabhaCode]);
+  }, [receiptCode]);
 
   const pratinidhiNameById = useMemo(() => {
     return new Map(
@@ -579,8 +580,7 @@ const EntriesList = forwardRef(({
   const generateReceiptNumber = (fy) => {
     const existingReceiptsInFY = entries.filter((e) => e?.fy === fy && e?.receiptNo);
     const nextNumber = existingReceiptsInFY.length + 1;
-    const paddedNumber = String(nextNumber).padStart(6, "0");
-    return `${effectiveSabhaCode}/${fy}/${paddedNumber}`;
+    return formatReceiptNumber(effectiveReceiptCode, nextNumber);
   };
 
   // ✅ DB update: acknowledge (also sets acknowledged_by)

@@ -24,7 +24,7 @@ async function getUserSabhaContextOrThrow() {
     .select(`
       role,
       sabha_id,
-      sabhas:sabha_id ( id, code, name )
+      sabhas:sabha_id ( id, code, receipt_code, name )
     `)
     .eq('user_id', uid)
     .eq('is_active', true);
@@ -42,6 +42,7 @@ async function getUserSabhaContextOrThrow() {
     sabhaId: pratinidhiRow.sabha_id,
     sabhaName: pratinidhiRow.sabhas?.name,
     sabhaCode: pratinidhiRow.sabhas?.code,
+    receiptCode: pratinidhiRow.sabhas?.receipt_code,
   };
 }
 
@@ -96,6 +97,7 @@ const SabhaDashboard = () => {
           role: ctx?.role || profile?.role,
           sabhaId: ctx?.sabhaId || profile?.sabhaId,
           sabha: ctx?.sabhaName || profile?.sabha,
+          receiptCode: ctx?.receiptCode || profile?.receiptCode,
         };
 
         localStorage.setItem('userProfile', JSON.stringify(nextProfile));
@@ -593,7 +595,7 @@ const SabhaDashboard = () => {
               selectedFY={selectedFY}
               userRole={userProfile?.role}
               sabhaId={userProfile?.sabhaId}
-              sabhaCode={userProfile?.sabhaCode}
+              receiptCode={userProfile?.receiptCode}
               currentUserId={userProfile?.user_id || userProfile?.userId}
               onEntriesUpdate={handleEntriesUpdate}
               pratinidhiFilter={pratinidhiFilter}
