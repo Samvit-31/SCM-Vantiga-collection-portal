@@ -389,6 +389,7 @@ const ReceiptPreview = ({ standalone = false }) => {
     () => primaryPayer?.name || members?.[0]?.name || '-',
     [primaryPayer, members]
   );
+  const isMathMaryada = entry?.entryType === 'Math Maryada';
 
   if (!entry) return null;
 
@@ -469,7 +470,7 @@ const ReceiptPreview = ({ standalone = false }) => {
           <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
             <div className="px-6 pt-4 pb-3 border-b border-slate-300">
               <div className="flex items-start justify-between gap-3">
-                <img src={logoUrl} alt="SCM Vantiga Portal" className="w-14 h-14 rounded-full mt-1" />
+                <img src={logoUrl} alt="SCM Receipt" className="w-14 h-14 rounded-full mt-1" />
                 <div className="text-center flex-1">
                   <div className="text-xl leading-tight font-bold uppercase tracking-wide">
                     Shri Chitrapur Math
@@ -488,7 +489,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
             <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between">
               <div>
-                <div className="text-lg font-bold">Digital Vantiga Receipt</div>
+                <div className="text-lg font-bold">{isMathMaryada ? 'Digital Math Maryada Receipt' : 'Digital Vantiga Receipt'}</div>
                 <div className="text-sm font-semibold mt-0.5">Collecting Local Sabha: {collectingSabha}</div>
               </div>
               <div className="text-sm leading-tight text-right font-semibold">
@@ -504,7 +505,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
             <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
               Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
-              <span className="font-semibold">for the purpose of Vantiga for Year:</span>{' '}
+              <span className="font-semibold">for the purpose of {isMathMaryada ? 'Math Maryada' : 'Vantiga'} for Year:</span>{' '}
               <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
             </div>
 
@@ -523,35 +524,42 @@ const ReceiptPreview = ({ standalone = false }) => {
             </div>
 
             <div className="px-6 pb-2">
-              <div className="text-base font-semibold mb-1.5">Vantiga Payer Details:</div>
-              <div className="border border-slate-300 rounded-md overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-300">
-                      <th className="text-left px-3 py-2 w-[41%]">Name</th>
-                      <th className="text-left px-3 py-2 w-[10%]">Age</th>
-                      <th className="text-left px-3 py-2 w-[14%]">Gender</th>
-                      <th className="text-left px-3 py-2 w-[15%]">Gotra</th>
-                      <th className="text-center px-3 py-2 w-[20%]">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableRows.map((m, idx) => (
-                      <tr key={m?.memberId || `blank-${idx}`} className="border-b border-slate-200">
-                        <td className="px-3 py-2">{m?.name || ''}</td>
-                        <td className="px-3 py-2">{m?.age ?? ''}</td>
-                        <td className="px-3 py-2">{m?.gender ?? ''}</td>
-                        <td className="px-3 py-2">{m?.gotra ?? ''}</td>
-                        <td className="px-3 py-2 text-right">{m ? Number(m?.amount || 0).toLocaleString('en-IN') : ''}</td>
+              <div className="text-base font-semibold mb-1.5">{isMathMaryada ? 'Math Maryada Payer Details:' : 'Vantiga Payer Details:'}</div>
+              {isMathMaryada ? (
+                <div className="border border-slate-300 rounded-md p-3 text-sm">
+                  <div><span className="font-semibold">Name:</span> {primaryPayerName}</div>
+                  <div className="mt-1"><span className="font-semibold">Amount:</span> {totalAmount.toLocaleString('en-IN')}</div>
+                </div>
+              ) : (
+                <div className="border border-slate-300 rounded-md overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-300">
+                        <th className="text-left px-3 py-2 w-[41%]">Name</th>
+                        <th className="text-left px-3 py-2 w-[10%]">Age</th>
+                        <th className="text-left px-3 py-2 w-[14%]">Gender</th>
+                        <th className="text-left px-3 py-2 w-[15%]">Gotra</th>
+                        <th className="text-center px-3 py-2 w-[20%]">Amount</th>
                       </tr>
-                    ))}
-                    <tr className="font-semibold">
-                      <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
-                      <td className="px-3 py-2 text-right">{totalAmount.toLocaleString('en-IN')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((m, idx) => (
+                        <tr key={m?.memberId || `blank-${idx}`} className="border-b border-slate-200">
+                          <td className="px-3 py-2">{m?.name || ''}</td>
+                          <td className="px-3 py-2">{m?.age ?? ''}</td>
+                          <td className="px-3 py-2">{m?.gender ?? ''}</td>
+                          <td className="px-3 py-2">{m?.gotra ?? ''}</td>
+                          <td className="px-3 py-2 text-right">{m ? Number(m?.amount || 0).toLocaleString('en-IN') : ''}</td>
+                        </tr>
+                      ))}
+                      <tr className="font-semibold">
+                        <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
+                        <td className="px-3 py-2 text-right">{totalAmount.toLocaleString('en-IN')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <div className="mt-1.5 text-base font-semibold">
                 AMOUNT IN WORDS: <span className="font-medium"> Rupees</span>
                 <span className="italic font-medium">{amountInWords}</span>
@@ -570,23 +578,25 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
-              <div className="text-base font-semibold mb-2">Opt to Show in Vantiga Directory:</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-2.5">
-                <div>
-                  <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
+            {!isMathMaryada && (
+              <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
+                <div className="text-base font-semibold mb-2">Opt to Show in Vantiga Directory:</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-2.5">
+                  <div>
+                    <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Mobile Number:</span> {optShowMobile}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Email ID:</span> {optShowEmail}
+                  </div>
                 </div>
-                <div>
-                  <span className="font-semibold">Mobile Number:</span> {optShowMobile}
-                </div>
-                <div>
-                  <span className="font-semibold">Email ID:</span> {optShowEmail}
+                <div className="inline-block text-sm font-semibold bg-yellow-200 px-2 py-1 rounded">
+                  Consent Statement comes here. To be vetted/provided by legal team
                 </div>
               </div>
-              <div className="inline-block text-sm font-semibold bg-yellow-200 px-2 py-1 rounded">
-                Consent Statement comes here. To be vetted/provided by legal team
-              </div>
-            </div>
+            )}
 
             <div className="border-t border-slate-300 px-6 py-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">

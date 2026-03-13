@@ -377,6 +377,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   const amountInWords = numberToWords(Math.round(payload.totalAmount));
   const payerMobile = payload.payerMobile ? `+91 ${payload.payerMobile}` : "-";
   const address = payload.address || "-";
+  const isMathMaryada = payload.entryType === "Math Maryada";
   const tableRows = [...payload.members, ...Array(Math.max(0, 5 - payload.members.length)).fill(null)];
 
   const row = (height: number) => {
@@ -476,7 +477,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
 
   const summary = row(56);
   drawSectionBox(summary.top, summary.height);
-  page.drawText("Digital Vantiga Receipt", {
+  page.drawText(isMathMaryada ? "Digital Math Maryada Receipt" : "Digital Vantiga Receipt", {
     x: left + horizontalPad,
     y: summary.top - 20,
     size: 15,
@@ -509,7 +510,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     size: 10.5,
     font: titleFont,
   });
-  const receivedPrefix = `${payload.payerName} for the purpose of Vantiga for Year:`;
+  const receivedPrefix = `${payload.payerName} for the purpose of ${isMathMaryada ? "Math Maryada" : "Vantiga"} for Year:`;
   page.drawText(receivedPrefix, {
     x: left + 92,
     y: received.top - 18,
@@ -554,58 +555,75 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
 
   const detailsLabel = row(22);
   drawSectionBox(detailsLabel.top, detailsLabel.height);
-  page.drawText("Vantiga Payer Details:", {
+  page.drawText(isMathMaryada ? "Math Maryada Payer Details:" : "Vantiga Payer Details:", {
     x: left + horizontalPad,
     y: detailsLabel.top - 15,
     size: 10.5,
     font: titleFont,
   });
 
-  const tableTop = y;
-  const tableHeight = 148;
-  drawSectionBox(tableTop, tableHeight);
-  const col1 = left + 10;
-  const col2 = left + contentWidth * 0.52;
-  const col3 = left + contentWidth * 0.62;
-  const col4 = left + contentWidth * 0.74;
-  const tableRight = right - 10;
-  const headerY = tableTop - 16;
-  const rowHeight = 20;
-
-  page.drawText("Name", { x: col1, y: headerY, size: 9.5, font: titleFont });
-  page.drawText("Age", { x: col2, y: headerY, size: 9.5, font: titleFont });
-  page.drawText("Gender", { x: col3, y: headerY, size: 9.5, font: titleFont });
-  page.drawText("Gotra", { x: col4, y: headerY, size: 9.5, font: titleFont });
-  drawRightText("Amount", tableRight, headerY, 9.5, true);
-
-  page.drawLine({
-    start: { x: left + 2, y: tableTop - 22 },
-    end: { x: right - 2, y: tableTop - 22 },
-    thickness: 1,
-    color: borderColor,
-  });
-
-  tableRows.forEach((member, idx) => {
-    const rowY = tableTop - 22 - (idx + 1) * rowHeight + 6;
-    page.drawText(member?.full_name || "", { x: col1, y: rowY, size: 9, font: bodyFont });
-    page.drawText(member?.age != null ? String(member.age) : "", { x: col2, y: rowY, size: 9, font: bodyFont });
-    page.drawText(member?.gender || "", { x: col3, y: rowY, size: 9, font: bodyFont });
-    page.drawText(member?.gotra || "", { x: col4, y: rowY, size: 9, font: bodyFont });
-    drawRightText(member ? formatAmountIndian(Number(member.amount || 0)) : "", tableRight, rowY, 9, false);
-
-    const dividerY = tableTop - 22 - (idx + 1) * rowHeight;
-    page.drawLine({
-      start: { x: left + 2, y: dividerY },
-      end: { x: right - 2, y: dividerY },
-      thickness: 0.7,
-      color: rgb(0.88, 0.9, 0.92),
+  if (isMathMaryada) {
+    const singlePayer = row(48);
+    drawSectionBox(singlePayer.top, singlePayer.height);
+    page.drawText(`Name: ${payload.payerName}`, {
+      x: left + horizontalPad,
+      y: singlePayer.top - 18,
+      size: 10,
+      font: bodyFont,
     });
-  });
+    page.drawText(`Amount: ${formatAmountIndian(payload.totalAmount)}`, {
+      x: left + horizontalPad,
+      y: singlePayer.top - 34,
+      size: 10,
+      font: bodyFont,
+    });
+  } else {
+    const tableTop = y;
+    const tableHeight = 148;
+    drawSectionBox(tableTop, tableHeight);
+    const col1 = left + 10;
+    const col2 = left + contentWidth * 0.52;
+    const col3 = left + contentWidth * 0.62;
+    const col4 = left + contentWidth * 0.74;
+    const tableRight = right - 10;
+    const headerY = tableTop - 16;
+    const rowHeight = 20;
 
-  const totalY = tableTop - 22 - tableRows.length * rowHeight - 16;
-  page.drawText("TOTAL", { x: col4, y: totalY, size: 9.5, font: titleFont });
-  drawRightText(formatAmountIndian(payload.totalAmount), tableRight, totalY, 9.5, true);
-  y = tableTop - tableHeight;
+    page.drawText("Name", { x: col1, y: headerY, size: 9.5, font: titleFont });
+    page.drawText("Age", { x: col2, y: headerY, size: 9.5, font: titleFont });
+    page.drawText("Gender", { x: col3, y: headerY, size: 9.5, font: titleFont });
+    page.drawText("Gotra", { x: col4, y: headerY, size: 9.5, font: titleFont });
+    drawRightText("Amount", tableRight, headerY, 9.5, true);
+
+    page.drawLine({
+      start: { x: left + 2, y: tableTop - 22 },
+      end: { x: right - 2, y: tableTop - 22 },
+      thickness: 1,
+      color: borderColor,
+    });
+
+    tableRows.forEach((member, idx) => {
+      const rowY = tableTop - 22 - (idx + 1) * rowHeight + 6;
+      page.drawText(member?.full_name || "", { x: col1, y: rowY, size: 9, font: bodyFont });
+      page.drawText(member?.age != null ? String(member.age) : "", { x: col2, y: rowY, size: 9, font: bodyFont });
+      page.drawText(member?.gender || "", { x: col3, y: rowY, size: 9, font: bodyFont });
+      page.drawText(member?.gotra || "", { x: col4, y: rowY, size: 9, font: bodyFont });
+      drawRightText(member ? formatAmountIndian(Number(member.amount || 0)) : "", tableRight, rowY, 9, false);
+
+      const dividerY = tableTop - 22 - (idx + 1) * rowHeight;
+      page.drawLine({
+        start: { x: left + 2, y: dividerY },
+        end: { x: right - 2, y: dividerY },
+        thickness: 0.7,
+        color: rgb(0.88, 0.9, 0.92),
+      });
+    });
+
+    const totalY = tableTop - 22 - tableRows.length * rowHeight - 16;
+    page.drawText("TOTAL", { x: col4, y: totalY, size: 9.5, font: titleFont });
+    drawRightText(formatAmountIndian(payload.totalAmount), tableRight, totalY, 9.5, true);
+    y = tableTop - tableHeight;
+  }
 
   const words = row(24);
   drawSectionBox(words.top, words.height);
@@ -631,47 +649,49 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     font: monoBoldFont,
   });
 
-  const directory = row(62);
-  drawSectionBox(directory.top, directory.height, true);
-  page.drawText("Opt to Show in Vantiga Directory:", {
-    x: left + horizontalPad,
-    y: directory.top - 16,
-    size: 10,
-    font: titleFont,
-  });
-  page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, {
-    x: left + horizontalPad,
-    y: directory.top - 32,
-    size: 9.5,
-    font: bodyFont,
-  });
-  page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, {
-    x: left + 190,
-    y: directory.top - 32,
-    size: 9.5,
-    font: bodyFont,
-  });
-  page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, {
-    x: left + 355,
-    y: directory.top - 32,
-    size: 9.5,
-    font: bodyFont,
-  });
-  page.drawRectangle({
-    x: left + horizontalPad,
-    y: directory.top - 53,
-    width: contentWidth - 2 * horizontalPad,
-    height: 14,
-    color: rgb(0.99, 0.93, 0.62),
-    borderColor: rgb(0.92, 0.84, 0.34),
-    borderWidth: 0.8,
-  });
-  page.drawText("Consent Statement comes here. To be vetted/provided by legal team", {
-    x: left + horizontalPad + 4,
-    y: directory.top - 49,
-    size: 8.5,
-    font: bodyFont,
-  });
+  if (!isMathMaryada) {
+    const directory = row(62);
+    drawSectionBox(directory.top, directory.height, true);
+    page.drawText("Opt to Show in Vantiga Directory:", {
+      x: left + horizontalPad,
+      y: directory.top - 16,
+      size: 10,
+      font: titleFont,
+    });
+    page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, {
+      x: left + horizontalPad,
+      y: directory.top - 32,
+      size: 9.5,
+      font: bodyFont,
+    });
+    page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, {
+      x: left + 190,
+      y: directory.top - 32,
+      size: 9.5,
+      font: bodyFont,
+    });
+    page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, {
+      x: left + 355,
+      y: directory.top - 32,
+      size: 9.5,
+      font: bodyFont,
+    });
+    page.drawRectangle({
+      x: left + horizontalPad,
+      y: directory.top - 53,
+      width: contentWidth - 2 * horizontalPad,
+      height: 14,
+      color: rgb(0.99, 0.93, 0.62),
+      borderColor: rgb(0.92, 0.84, 0.34),
+      borderWidth: 0.8,
+    });
+    page.drawText("Consent Statement comes here. To be vetted/provided by legal team", {
+      x: left + horizontalPad + 4,
+      y: directory.top - 49,
+      size: 8.5,
+      font: bodyFont,
+    });
+  }
 
   const signers = row(52);
   drawSectionBox(signers.top, signers.height);
