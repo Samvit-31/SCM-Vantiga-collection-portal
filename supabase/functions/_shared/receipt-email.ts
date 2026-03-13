@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { RECEIPT_LOGO_BASE64 } from "./embedded-logo.ts";
 
-export type ReceiptDispatchStatus = "pending" | "sent" | "failed";
+export type ReceiptDispatchStatus = "pending" | "processing" | "sent" | "failed";
 
 export interface ReceiptDispatchRow {
   id: string;
@@ -50,14 +50,18 @@ interface ReceiptPayload {
   members: ReceiptMember[];
 }
 
-const EMAIL_BODY_COPY = `
+function getEmailBodyCopy(entryType: string): string {
+  const receiptLabel = entryType === "Math Maryada" ? "Digital Math Maryada receipt" : "Digital Vantiga receipt";
+
+  return `
 Jai Shankar,
 
-Thank you for your contribution. Please find your Digital Vantiga receipt attached as a PDF.
+Thank you for your contribution. Please find your ${receiptLabel} attached as a PDF.
 Keep this receipt for your records and future reference.
 
 If you have any questions, please contact your Sabha representative.
 `;
+}
 
 let cachedReceiptLogoBytes: Uint8Array | null = null;
 
@@ -227,6 +231,63 @@ export async function upsertDispatch(
   );
 
   if (error) throw error;
+}
+
+async function ensureDispatchRow(
+  supabase: ReturnType<typeof createServiceClient>,
+  entryId: string,
+  receiptNo: string,
+): Promise<ReceiptDispatchRow> {
+  let existing = await loadDispatchRow(supabase, entryId, receiptNo);
+
+  if (!existing) {
+    await upsertDispatch(supabase, {
+      entryId,
+      receiptNo,
+      payerEmail: null,
+      status: "pending",
+      attemptCount: 0,
+      lastError: null,
+      providerMessageId: null,
+    });
+
+    existing = await loadDispatchRow(supabase, entryId, receiptNo);
+  }
+
+  if (!existing) {
+    throw new Error("Unable to create receipt email dispatch row.");
+  }
+
+  return existing;
+}
+
+async function claimDispatchForSending(
+  supabase: ReturnType<typeof createServiceClient>,
+  dispatch: ReceiptDispatchRow,
+): Promise<{ claimed: boolean; attemptCount: number }> {
+  const nextAttemptCount = (dispatch.attempt_count ?? 0) + 1;
+
+  const { data, error } = await supabase
+    .from("receipt_email_dispatch")
+    .update({
+      status: "processing",
+      attempt_count: nextAttemptCount,
+      last_error: null,
+      provider_message_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("entry_id", dispatch.entry_id)
+    .eq("receipt_no", dispatch.receipt_no)
+    .eq("attempt_count", dispatch.attempt_count)
+    .in("status", ["pending", "failed"])
+    .select("entry_id");
+
+  if (error) throw error;
+
+  return {
+    claimed: Array.isArray(data) && data.length > 0,
+    attemptCount: nextAttemptCount,
+  };
 }
 
 export async function fetchReceiptPayload(
@@ -742,10 +803,11 @@ export async function sendViaResend(
   const subject = `Receipt ${payload.receiptNo}`;
   const safePayerName = escapeHtml(payload.payerName);
   const safeSabhaName = escapeHtml(payload.sabhaName);
+  const emailBodyCopy = getEmailBodyCopy(payload.entryType);
 
   const html = `
     <div style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #111827;">
-      <p>${EMAIL_BODY_COPY.trim().replaceAll("\n", "<br/>")}</p>
+      <p>${emailBodyCopy.trim().replaceAll("\n", "<br/>")}</p>
       <p><strong>Receipt Number:</strong> ${escapeHtml(payload.receiptNo)}<br/>
       <strong>Payer Name:</strong> ${safePayerName}<br/>
       <strong>Sabha:</strong> ${safeSabhaName}<br/>
@@ -795,27 +857,30 @@ export async function processReceiptEmail(
   entryId: string,
   receiptNo: string,
 ): Promise<{ status: "sent" | "skipped"; message: string }> {
-  const existing = await loadDispatchRow(supabase, entryId, receiptNo);
-  if (existing?.status === "sent") {
+  const existing = await ensureDispatchRow(supabase, entryId, receiptNo);
+  if (existing.status === "sent") {
     return { status: "skipped", message: "Email already sent for this receipt number." };
   }
+  if (existing.status === "processing") {
+    return { status: "skipped", message: "Email dispatch is already in progress for this receipt number." };
+  }
 
-  const nextAttemptCount = (existing?.attempt_count ?? 0) + 1;
+  const claim = await claimDispatchForSending(supabase, existing);
+  if (!claim.claimed) {
+    const latest = await loadDispatchRow(supabase, entryId, receiptNo);
+    if (latest?.status === "sent") {
+      return { status: "skipped", message: "Email already sent for this receipt number." };
+    }
+    if (latest?.status === "processing") {
+      return { status: "skipped", message: "Email dispatch is already in progress for this receipt number." };
+    }
+    return { status: "skipped", message: "Another worker already claimed this receipt email dispatch." };
+  }
 
   let receiptPayload: ReceiptPayload | null = null;
   try {
     const generated = await generateReceiptPdfForEntry(supabase, entryId, receiptNo);
     receiptPayload = generated.payload;
-
-    await upsertDispatch(supabase, {
-      entryId,
-      receiptNo,
-      payerEmail: receiptPayload.payerEmail,
-      status: "pending",
-      attemptCount: nextAttemptCount,
-      lastError: null,
-      providerMessageId: null,
-    });
 
     const providerMessageId = await sendViaResend(receiptPayload, generated.pdfBase64);
 
@@ -824,7 +889,7 @@ export async function processReceiptEmail(
       receiptNo,
       payerEmail: receiptPayload.payerEmail,
       status: "sent",
-      attemptCount: nextAttemptCount,
+      attemptCount: claim.attemptCount,
       lastError: null,
       providerMessageId,
     });
@@ -836,9 +901,9 @@ export async function processReceiptEmail(
     await upsertDispatch(supabase, {
       entryId,
       receiptNo,
-      payerEmail: receiptPayload?.payerEmail ?? existing?.payer_email ?? null,
+      payerEmail: receiptPayload?.payerEmail ?? existing.payer_email ?? null,
       status: "failed",
-      attemptCount: nextAttemptCount,
+      attemptCount: claim.attemptCount,
       lastError: errorMessage,
       providerMessageId: null,
     });

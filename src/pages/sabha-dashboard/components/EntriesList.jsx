@@ -608,7 +608,10 @@ const EntriesList = forwardRef(({
 
     setIsProcessing(true);
     try {
-      const receiptNo = generateReceiptNumber(selectedEntry?.fy);
+      const isCashEntry = selectedEntry?.paidBy === "Cash";
+      const receiptNo = isCashEntry && selectedEntry?.receiptNo
+        ? selectedEntry.receiptNo
+        : generateReceiptNumber(selectedEntry?.fy);
       const acknowledgedDate = new Date().toISOString();
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();

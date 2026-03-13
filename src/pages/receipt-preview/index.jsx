@@ -51,6 +51,11 @@ const formatDate = (dateString) => {
   }
 };
 
+const formatAmountIndian = (value) => {
+  const amount = Number(value || 0);
+  return amount.toLocaleString('en-IN');
+};
+
 const toReceiptFileSafeName = (receiptNo) => {
   const value = String(receiptNo || '').trim();
   if (!value || value === '-') return 'Receipt';
@@ -99,6 +104,7 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
     paidBy: dbEntry?.paid_by ?? '-',
     referenceNo: dbEntry?.reference_no ?? '',
     receiptNo: dbEntry?.receipt_no || fallbackEntry?.receiptNo || '-',
+    submittedDate: dbEntry?.submitted_at || fallbackEntry?.submittedDate || fallbackEntry?.submitted_at || null,
     submittedBy: dbEntry?.submitted_by || fallbackEntry?.submittedBy || fallbackEntry?.submitted_by || null,
     submitted_by: dbEntry?.submitted_by || fallbackEntry?.submitted_by || fallbackEntry?.submittedBy || null,
     acknowledgedBy: dbEntry?.acknowledged_by || fallbackEntry?.acknowledgedBy || fallbackEntry?.acknowledged_by || null,
@@ -187,7 +193,7 @@ const ReceiptPreview = ({ standalone = false }) => {
         const { data, error } = await supabase
           .from('vantiga_entries')
           .select(`
-            id, fy, entry_type, paid_by, reference_no, receipt_no, submitted_by, acknowledged_by, acknowledged_at,
+            id, fy, entry_type, paid_by, reference_no, receipt_no, submitted_at, submitted_by, acknowledged_by, acknowledged_at,
             families:family_id (
               id,
               address_multiline,
@@ -396,7 +402,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   const totalAmount = members.reduce((sum, m) => sum + (Number(m?.amount) || 0), 0);
   const amountInWords = numberToWords(totalAmount);
 
-  const receiptDate = entry?.acknowledgedDate ? formatDate(entry.acknowledgedDate) : formatDate(new Date().toISOString());
+  const receiptDate = formatDate(entry?.acknowledgedDate || entry?.submittedDate || new Date().toISOString());
 
   const paidBy = String(entry?.paidBy || '').trim() || '-';
   const referenceNoRaw = String(entry?.referenceNo ?? '').trim();
@@ -406,9 +412,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   const payerEmail = entry?.family?.payerEmail || '-';
   const address = entry?.family?.addressMultiLine || '-';
 
-  const collectingSabha = userProfile?.sabha
-    ? userProfile.sabha
-    : `${entry?.family?.sabha || '-'}`;
+  const collectingSabha = entry?.family?.sabha || userProfile?.sabha || '-';
 
   const optShowAmount = entry?.family?.optShowAmountInDirectory || 'No';
   const optShowMobile = entry?.family?.optShowMobileInDirectory || 'No';
@@ -528,7 +532,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               {isMathMaryada ? (
                 <div className="border border-slate-300 rounded-md p-3 text-sm">
                   <div><span className="font-semibold">Name:</span> {primaryPayerName}</div>
-                  <div className="mt-1"><span className="font-semibold">Amount:</span> {totalAmount.toLocaleString('en-IN')}</div>
+                  <div className="mt-1"><span className="font-semibold">Amount:</span> {formatAmountIndian(totalAmount)}</div>
                 </div>
               ) : (
                 <div className="border border-slate-300 rounded-md overflow-hidden">
@@ -549,12 +553,12 @@ const ReceiptPreview = ({ standalone = false }) => {
                           <td className="px-3 py-2">{m?.age ?? ''}</td>
                           <td className="px-3 py-2">{m?.gender ?? ''}</td>
                           <td className="px-3 py-2">{m?.gotra ?? ''}</td>
-                          <td className="px-3 py-2 text-right">{m ? Number(m?.amount || 0).toLocaleString('en-IN') : ''}</td>
+                          <td className="px-3 py-2 text-right">{m ? formatAmountIndian(m?.amount) : ''}</td>
                         </tr>
                       ))}
                       <tr className="font-semibold">
                         <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
-                        <td className="px-3 py-2 text-right">{totalAmount.toLocaleString('en-IN')}</td>
+                        <td className="px-3 py-2 text-right">{formatAmountIndian(totalAmount)}</td>
                       </tr>
                     </tbody>
                   </table>
