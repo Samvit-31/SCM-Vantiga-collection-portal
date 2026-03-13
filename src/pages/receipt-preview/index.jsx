@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import Button from '../../components/ui/Button';
 import CommonHeader from 'components/ui/CommonHeader';
 import { supabase } from '../../supabaseClient';
@@ -357,11 +359,56 @@ const ReceiptPreview = ({ standalone = false }) => {
     URL.revokeObjectURL(url);
   };
 
+  const downloadReceiptPreviewAsPdf = async () => {
+    const receiptNode = receiptSheetRef.current;
+    if (!receiptNode) {
+      throw new Error('Receipt preview is not available for download.');
+    }
+
+    const canvas = await html2canvas(receiptNode, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: receiptNode.scrollWidth,
+      windowHeight: receiptNode.scrollHeight
+    });
+
+    const imageData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const usableWidth = pageWidth - margin * 2;
+    const usableHeight = pageHeight - margin * 2;
+    const imageHeight = (canvas.height * usableWidth) / canvas.width;
+
+    let remainingHeight = imageHeight;
+    let positionY = margin;
+
+    pdf.addImage(imageData, 'PNG', margin, positionY, usableWidth, imageHeight);
+    remainingHeight -= usableHeight;
+
+    while (remainingHeight > 0) {
+      positionY = remainingHeight - imageHeight + margin;
+      pdf.addPage();
+      pdf.addImage(imageData, 'PNG', margin, positionY, usableWidth, imageHeight);
+      remainingHeight -= usableHeight;
+    }
+
+    pdf.save(`${toReceiptFileSafeName(entry?.receiptNo)}.pdf`);
+  };
+
   const handleDownloadPdf = async () => {
     if (isDownloadingPdf) return;
 
     try {
       setIsDownloadingPdf(true);
+      if (entry?.entryType === 'Math Maryada') {
+        await downloadReceiptPreviewAsPdf();
+        return;
+      }
+
       const entryId = entry?.entryId || entry?.id;
       const receiptNo = entry?.receiptNo;
 
