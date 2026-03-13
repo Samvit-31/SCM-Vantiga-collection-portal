@@ -66,6 +66,7 @@ const NewEntryForm = () => {
 
   // Form state - removed familyId, updated opt-in defaults to "Yes"
   const [formData, setFormData] = useState({
+    entryType: 'Vantiga',
     sabha: '',
     address: '',
     payerMobile: '',
@@ -84,7 +85,7 @@ const NewEntryForm = () => {
       firstName: '',
       lastName: '',
       age: '',
-      gender: 'male',
+      gender: 'Male',
       gotra: '',
       amount: '',
       relationship: 'Member'
@@ -186,6 +187,8 @@ const NewEntryForm = () => {
     }
   }, [location?.state?.prefillFY, fyOptions]);
 
+  const isMathMaryada = formData?.entryType === 'Math Maryada';
+
   // -----------------------
   // DUPLICATE CHECK (UPDATED): Now reads from Supabase, NOT localStorage.
   // This remains non-blocking (warning only), same as your existing behavior.
@@ -215,6 +218,7 @@ const NewEntryForm = () => {
     formData?.payerEmail,
     formData?.referenceNo,
     formData?.paidBy,
+    formData?.entryType,
     formData?.sabha,
     userProfile?.sabhaId,
     entryFY,
@@ -276,7 +280,7 @@ const NewEntryForm = () => {
       const { data, error } = await supabase
         .from("vantiga_entries")
         .select(`
-          id, fy, status, paid_by, reference_no, submitted_at,
+          id, fy, entry_type, status, paid_by, reference_no, submitted_at,
           families (
             payer_mobile, payer_email,
             family_members ( full_name, amount, is_primary_payer )
@@ -284,6 +288,7 @@ const NewEntryForm = () => {
         `)
         .eq("sabha_id", userProfile?.sabhaId)
         .eq("fy", entryFY)
+        .eq("entry_type", formData?.entryType)
         .gte("submitted_at", fourteenDaysAgo.toISOString())
         .order("submitted_at", { ascending: false })
         .limit(50);
@@ -408,6 +413,11 @@ const NewEntryForm = () => {
     { value: 'No', label: 'No' }
   ];
 
+  const entryTypeOptions = [
+    { value: 'Vantiga', label: 'Vantiga' },
+    { value: 'Math Maryada', label: 'Math Maryada' }
+  ];
+
   const handleInputChange = (e) => {
     const { name, value } = e?.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -417,6 +427,46 @@ const NewEntryForm = () => {
   };
 
   const handleSelectChange = (name, value) => {
+    if (name === 'entryType') {
+      setFormData(prev => ({
+        ...prev,
+        entryType: value,
+        ...(value === 'Math Maryada'
+          ? {
+              optShowAmountInDirectory: 'No',
+              optShowMobileInDirectory: 'No',
+              optShowEmailInDirectory: 'No'
+            }
+          : {})
+      }));
+
+      if (value === 'Math Maryada') {
+        setMembers((prev) => {
+          const primaryMember = prev?.[0] || {};
+          return [{
+            id: 1,
+            firstName: primaryMember?.firstName || '',
+            lastName: primaryMember?.lastName || '',
+            age: primaryMember?.age || '',
+            gender: primaryMember?.gender || 'Male',
+            gotra: '',
+            amount: primaryMember?.amount || '',
+            relationship: 'Member'
+          }];
+        });
+      }
+
+      setErrors((prev) => {
+        const nextErrors = { ...prev };
+        delete nextErrors.entryType;
+        Object.keys(nextErrors)
+          .filter((key) => key.includes('_gotra'))
+          .forEach((key) => delete nextErrors[key]);
+        return nextErrors;
+      });
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors?.[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -450,6 +500,7 @@ const NewEntryForm = () => {
   };
 
   const addMember = () => {
+    if (isMathMaryada) return;
     const additionalMembersCount = Math.max(members?.length - 1, 0);
     if (additionalMembersCount >= MAX_ADDITIONAL_MEMBERS) {
       return;
@@ -484,6 +535,10 @@ const NewEntryForm = () => {
   const validateForm = () => {
     const newErrors = {};
 
+    if (!formData?.entryType) {
+      newErrors.entryType = 'Entry type is required';
+    }
+
     if (!formData?.sabha?.trim()) {
       newErrors.sabha = 'Sabha is required';
     }
@@ -517,7 +572,7 @@ const NewEntryForm = () => {
       if (!member?.age || member?.age < 1) {
         newErrors[`member_${index}_age`] = 'Valid age is required';
       }
-      if (!member?.gotra?.trim()) {
+      if (!isMathMaryada && !member?.gotra?.trim()) {
         newErrors[`member_${index}_gotra`] = 'Gotra is required';
       }
       if (!member?.amount || parseFloat(member?.amount) <= 0) {
@@ -574,9 +629,9 @@ const NewEntryForm = () => {
         address_multiline: formData?.address,
         payer_mobile: formData?.payerMobile,
         payer_email: formData?.payerEmail,
-        opt_show_amount_in_directory: formData?.optShowAmountInDirectory === "Yes",
-        opt_show_mobile_in_directory: formData?.optShowMobileInDirectory === "Yes",
-        opt_show_email_in_directory: formData?.optShowEmailInDirectory === "Yes",
+        opt_show_amount_in_directory: !isMathMaryada && formData?.optShowAmountInDirectory === "Yes",
+        opt_show_mobile_in_directory: !isMathMaryada && formData?.optShowMobileInDirectory === "Yes",
+        opt_show_email_in_directory: !isMathMaryada && formData?.optShowEmailInDirectory === "Yes",
       };
 
       const { data: familyRow, error: familyErr } = await supabase
@@ -590,12 +645,14 @@ const NewEntryForm = () => {
       const familyId = familyRow?.id;
 
       // 2) Insert FAMILY MEMBERS
-      const membersInsert = members.map((m, idx) => ({
+      const membersToInsert = isMathMaryada ? members.slice(0, 1) : members;
+
+      const membersInsert = membersToInsert.map((m, idx) => ({
         family_id: familyId,
         full_name: `${m?.firstName} ${m?.lastName}`.trim(),
         age: parseInt(m?.age, 10),
         gender: m?.gender,
-        gotra: m?.gotra,
+        gotra: isMathMaryada ? null : (m?.gotra || null),
         amount: Number(m?.amount),
         is_primary_payer: idx === 0, // Member 1 is primary payer
       }));
@@ -616,6 +673,7 @@ const NewEntryForm = () => {
         sabha_id: userProfile?.sabhaId,  // MUST be UUID
         family_id: familyId,             // UUID from families insert
         fy: entryFY,
+        entry_type: formData?.entryType,
         status: "SUBMITTED",
         paid_by: formData?.paidBy,
         reference_no: formData?.paidBy === "Cash" ? null : (formData?.referenceNo || null),
@@ -752,6 +810,16 @@ const NewEntryForm = () => {
             <p className="mt-2 text-xs text-muted-foreground">
               Entry FY determines where this submission is recorded.
             </p>
+            <div className="mt-4 max-w-sm">
+              <Select
+                label="Entry Type"
+                value={formData?.entryType}
+                onChange={(value) => handleSelectChange('entryType', value)}
+                options={entryTypeOptions}
+                required
+                error={errors?.entryType}
+              />
+            </div>
           </div>
 
           {/* Duplicate Warning Panel */}
@@ -832,26 +900,28 @@ const NewEntryForm = () => {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xl font-semibold text-card-foreground flex items-center gap-2">
                 <Icon name="UserPlus" size={20} />
-                Family Members
+                {isMathMaryada ? 'Primary Payer Details' : 'Family Members'}
               </h2>
-              <div className="flex flex-col items-end gap-2 text-right">
-                <span className="text-xs text-muted-foreground">
-                  Members: {members?.length || 1} / {MAX_ADDITIONAL_MEMBERS + 1} recommended
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addMember}
-                  iconName="Plus"
-                  iconPosition="left"
-                  disabled={Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS}
-                >
-                  Add Member
-                </Button>
-              </div>
+              {!isMathMaryada && (
+                <div className="flex flex-col items-end gap-2 text-right">
+                  <span className="text-xs text-muted-foreground">
+                    Members: {members?.length || 1} / {MAX_ADDITIONAL_MEMBERS + 1} recommended
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addMember}
+                    iconName="Plus"
+                    iconPosition="left"
+                    disabled={Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS}
+                  >
+                    Add Member
+                  </Button>
+                </div>
+              )}
             </div>
-            {Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS && (
+            {!isMathMaryada && Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS && (
               <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 You’ve reached the recommended limit of 5 members (Self + 4). If you need to add more, please
                 contact your treasurer.
@@ -863,9 +933,11 @@ const NewEntryForm = () => {
                 <div key={member?.id} className="bg-muted/50 border border-border rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-card-foreground">
-                      {index === 0 ? 'Member 1 (Primary Payer)' : `Member ${index + 1}`}
+                      {isMathMaryada
+                        ? 'Primary Payer'
+                        : (index === 0 ? 'Member 1 (Primary Payer)' : `Member ${index + 1}`)}
                     </h3>
-                    {index > 0 && (
+                    {!isMathMaryada && index > 0 && (
                       <Button
                         type="button"
                         variant="ghost"
@@ -912,17 +984,19 @@ const NewEntryForm = () => {
                       options={genderOptions}
                       required
                     />
-                    <Select
-                      label="Gotra"
-                      value={member?.gotra}
-                      onChange={(value) => handleMemberChange(index, 'gotra', value)}
-                      options={gotraOptions}
-                      placeholder="Select Gotra"
-                      required
-                      error={errors?.[`member_${index}_gotra`]}
-                      disabled={index > 0}
-                      title={index > 0 ? 'Gotra is auto-populated from Member 1' : ''}
-                    />
+                    {!isMathMaryada && (
+                      <Select
+                        label="Gotra"
+                        value={member?.gotra}
+                        onChange={(value) => handleMemberChange(index, 'gotra', value)}
+                        options={gotraOptions}
+                        placeholder="Select Gotra"
+                        required
+                        error={errors?.[`member_${index}_gotra`]}
+                        disabled={index > 0}
+                        title={index > 0 ? 'Gotra is auto-populated from Member 1' : ''}
+                      />
+                    )}
                     <Input
                       label="Contribution Amount (₹)"
                       type="text"
@@ -934,7 +1008,7 @@ const NewEntryForm = () => {
                       error={errors?.[`member_${index}_amount`]}
                     />
                   </div>
-                  {index > 0 && (
+                  {!isMathMaryada && index > 0 && (
                     <div className="mt-3">
                       <p className="text-xs text-muted-foreground italic flex items-center gap-1">
                         <Icon name="Info" size={14} />
@@ -963,7 +1037,7 @@ const NewEntryForm = () => {
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm ">
             <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
               <Icon name="Users" size={20} />
-              Family Information
+              {isMathMaryada ? 'Payer Contact Details' : 'Family Information'}
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
@@ -1043,33 +1117,34 @@ const NewEntryForm = () => {
             </div>
           </div>
 
-          {/* Vantiga Directory Opt-in Options Section */}
-          <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
-              <Icon name="Eye" size={20} />
-              Vantiga Directory Opt-in Options
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Select
-                label="Show Amount in Directory"
-                value={formData?.optShowAmountInDirectory}
-                onChange={(value) => handleSelectChange('optShowAmountInDirectory', value)}
-                options={yesNoOptions}
-              />
-              <Select
-                label="Show Mobile in Directory"
-                value={formData?.optShowMobileInDirectory}
-                onChange={(value) => handleSelectChange('optShowMobileInDirectory', value)}
-                options={yesNoOptions}
-              />
-              <Select
-                label="Show Email in Directory"
-                value={formData?.optShowEmailInDirectory}
-                onChange={(value) => handleSelectChange('optShowEmailInDirectory', value)}
-                options={yesNoOptions}
-              />
+          {!isMathMaryada && (
+            <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-card-foreground mb-6 flex items-center gap-2">
+                <Icon name="Eye" size={20} />
+                Vantiga Directory Opt-in Options
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Select
+                  label="Show Amount in Directory"
+                  value={formData?.optShowAmountInDirectory}
+                  onChange={(value) => handleSelectChange('optShowAmountInDirectory', value)}
+                  options={yesNoOptions}
+                />
+                <Select
+                  label="Show Mobile in Directory"
+                  value={formData?.optShowMobileInDirectory}
+                  onChange={(value) => handleSelectChange('optShowMobileInDirectory', value)}
+                  options={yesNoOptions}
+                />
+                <Select
+                  label="Show Email in Directory"
+                  value={formData?.optShowEmailInDirectory}
+                  onChange={(value) => handleSelectChange('optShowEmailInDirectory', value)}
+                  options={yesNoOptions}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-4">

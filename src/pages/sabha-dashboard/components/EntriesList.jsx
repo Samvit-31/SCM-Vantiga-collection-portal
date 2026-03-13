@@ -16,6 +16,12 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
+const ENTRY_TYPE_OPTIONS = [
+  { value: "ALL", label: "All Types" },
+  { value: "Vantiga", label: "Vantiga" },
+  { value: "Math Maryada", label: "Math Maryada" },
+];
+
 const REJECTION_REASONS = [
   "Amount not reflected in the bank account.",
   "Cheque bounced.",
@@ -50,6 +56,7 @@ const EntriesList = forwardRef(({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [entryTypeFilter, setEntryTypeFilter] = useState("ALL");
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -119,6 +126,7 @@ const EntriesList = forwardRef(({
         entryId: r.id,
         sabhaId: r.sabha_id, // ✅ keep sabhaId for logic
         fy: r.fy,
+        entryType: r.entry_type || "Vantiga",
         submittedDate: r.submitted_at,
         submittedBy: r.submitted_by,
         status: r.status,
@@ -228,6 +236,7 @@ const EntriesList = forwardRef(({
         (e) =>
           e?.sabhaId === entry?.sabhaId &&
           e?.fy === entry?.fy &&
+          (e?.entryType || "Vantiga") === (entry?.entryType || "Vantiga") &&
           e?.entryId !== entry?.entryId
       ) || [];
 
@@ -326,10 +335,14 @@ const EntriesList = forwardRef(({
           return false;
         }
 
+        if (entryTypeFilter !== "ALL" && (entry?.entryType || "Vantiga") !== entryTypeFilter) {
+          return false;
+        }
+
         return true;
       })
       .sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate));
-  }, [selectedFY, searchQuery, statusFilter, entries, userRole, pratinidhiFilter, effectiveUserId]);
+  }, [selectedFY, searchQuery, statusFilter, entryTypeFilter, entries, userRole, pratinidhiFilter, effectiveUserId]);
 
   // ✅ NEW: member-wise export rows (respects filters)
   const memberWiseRowsForExport = useMemo(() => {
@@ -359,6 +372,7 @@ const EntriesList = forwardRef(({
           isPrimary: "",
           memberAmount: 0,
           entryTotal,
+          entryType: entry?.entryType || "Vantiga",
           paidBy: entry?.paidBy || "",
           referenceNo: entry?.referenceNo || "",
           status: entry?.status || "",
@@ -378,6 +392,7 @@ const EntriesList = forwardRef(({
         isPrimary: m?.isPrimaryPayer ? "Yes" : "No",
         memberAmount: Number(m?.amount || 0),
         entryTotal,
+        entryType: entry?.entryType || "Vantiga",
         paidBy: entry?.paidBy || "",
         referenceNo: entry?.referenceNo || "",
         status: entry?.status || "",
@@ -489,6 +504,7 @@ const EntriesList = forwardRef(({
       "Primary Member",
       "Member Amount",
       "Entry Total Amount",
+      "Entry Type",
       "Paid By",
       "Reference",
       "Status",
@@ -507,6 +523,7 @@ const EntriesList = forwardRef(({
       r.isPrimary,
       r.memberAmount ?? 0,
       r.entryTotal ?? 0,
+      r.entryType,
       r.paidBy,
       r.referenceNo || "-",
       r.status,
@@ -531,6 +548,7 @@ const EntriesList = forwardRef(({
         <td class="nowrap">${escapeHtml(r.isPrimary || "-")}</td>
         <td class="nowrap">${escapeHtml(formatAmount(r.memberAmount))}</td>
         <td class="nowrap">${escapeHtml(formatAmount(r.entryTotal))}</td>
+        <td>${escapeHtml(r.entryType || "Vantiga")}</td>
         <td>${escapeHtml(r.paidBy || "")}</td>
         <td>${escapeHtml(r.referenceNo || "-")}</td>
         <td class="nowrap">${escapeHtml(r.status || "")}</td>
@@ -555,6 +573,7 @@ const EntriesList = forwardRef(({
             <th>Primary</th>
             <th>Member Amount</th>
             <th>Entry Total</th>
+            <th>Entry Type</th>
             <th>Paid By</th>
             <th>Reference</th>
             <th>Status</th>
@@ -562,7 +581,7 @@ const EntriesList = forwardRef(({
           </tr>
         </thead>
         <tbody>
-          ${rowsHtml || '<tr><td colspan="15">No data</td></tr>'}
+          ${rowsHtml || '<tr><td colspan="16">No data</td></tr>'}
         </tbody>
       </table>
     `;
@@ -823,6 +842,14 @@ const EntriesList = forwardRef(({
               className="w-full"
             />
           </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={entryTypeFilter}
+              onChange={(value) => setEntryTypeFilter(value)}
+              options={ENTRY_TYPE_OPTIONS}
+              className="w-full"
+            />
+          </div>
           {userRole === "treasurer" && (
             <div className="w-full sm:w-56">
               <Select
@@ -1031,7 +1058,7 @@ const EntriesList = forwardRef(({
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Financial Year
@@ -1039,6 +1066,15 @@ const EntriesList = forwardRef(({
                       <p className="mt-1 text-base font-semibold text-foreground">{selectedEntry?.fy}</p>
                     </div>
 
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Entry Type
+                      </label>
+                      <p className="mt-1 text-base font-semibold text-foreground">{selectedEntry?.entryType || "Vantiga"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Amount
@@ -1049,9 +1085,6 @@ const EntriesList = forwardRef(({
                         )}
                       </p>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Payment Mode

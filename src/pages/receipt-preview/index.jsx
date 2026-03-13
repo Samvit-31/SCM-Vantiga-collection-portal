@@ -60,6 +60,7 @@ const toReceiptFileSafeName = (receiptNo) => {
 const getStandaloneFallback = () => ({
   receiptNo: 'PREVIEW-001',
   fy: '2025-26',
+  entryType: 'Vantiga',
   paidBy: 'UPI',
   referenceNo: 'N/A',
   acknowledgedDate: new Date().toISOString(),
@@ -94,6 +95,7 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
     entryId: dbEntry?.id || fallbackEntry?.entryId || fallbackEntry?.id,
     id: dbEntry?.id || fallbackEntry?.id || fallbackEntry?.entryId,
     fy: dbEntry?.fy || fallbackEntry?.fy || '-',
+    entryType: dbEntry?.entry_type || fallbackEntry?.entryType || 'Vantiga',
     paidBy: dbEntry?.paid_by ?? '-',
     referenceNo: dbEntry?.reference_no ?? '',
     receiptNo: dbEntry?.receipt_no || fallbackEntry?.receiptNo || '-',
@@ -185,7 +187,7 @@ const ReceiptPreview = ({ standalone = false }) => {
         const { data, error } = await supabase
           .from('vantiga_entries')
           .select(`
-            id, fy, paid_by, reference_no, receipt_no, submitted_by, acknowledged_by, acknowledged_at,
+            id, fy, entry_type, paid_by, reference_no, receipt_no, submitted_by, acknowledged_by, acknowledged_at,
             families:family_id (
               id,
               address_multiline,

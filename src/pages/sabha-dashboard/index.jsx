@@ -200,7 +200,7 @@ const SabhaDashboard = () => {
       let query = supabase
         .from('vantiga_entries')
         .select(`
-          id, fy, status, paid_by, reference_no, receipt_no, submitted_by,
+          id, fy, entry_type, status, paid_by, reference_no, receipt_no, submitted_by,
           submitted_at, acknowledged_at, rejection_reason,
           sabha_id, family_id,
           families (

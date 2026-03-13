@@ -28,6 +28,7 @@ interface ReceiptPayload {
   entryId: string;
   receiptNo: string;
   fy: string;
+  entryType: string;
   paidBy: string;
   referenceNo: string | null;
   submittedAt: string | null;
@@ -238,6 +239,7 @@ export async function fetchReceiptPayload(
     .select(`
       id,
       fy,
+      entry_type,
       paid_by,
       reference_no,
       submitted_at,
@@ -327,6 +329,7 @@ export async function fetchReceiptPayload(
     entryId: data.id,
     receiptNo,
     fy: data?.fy || "-",
+    entryType: data?.entry_type || "Vantiga",
     paidBy: data?.paid_by || "-",
     referenceNo: optionalTrimmed(data?.reference_no),
     submittedAt: optionalTrimmed(data?.submitted_at),
