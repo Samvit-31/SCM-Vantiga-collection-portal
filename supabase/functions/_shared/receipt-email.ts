@@ -495,6 +495,169 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     return lines.length;
   };
 
+  const drawMathMaryadaPreviewStyleLayout = () => {
+    const summary = row(68);
+    drawSectionBox(summary.top, summary.height);
+    page.drawText("Digital Math Maryada Receipt", {
+      x: left + horizontalPad,
+      y: summary.top - 24,
+      size: 18,
+      font: titleFont,
+    });
+    page.drawText(`Collecting Local Sabha: ${payload.sabhaName}`, {
+      x: left + horizontalPad,
+      y: summary.top - 48,
+      size: 10.5,
+      font: titleFont,
+    });
+    const receiptNoLine = `Receipt number: ${payload.receiptNo}`;
+    drawRightText(receiptNoLine, right - horizontalPad, summary.top - 18, 10.5, true);
+    drawRightText(`Date: ${receiptDate}`, right - horizontalPad, summary.top - 40, 10.5, true);
+
+    const received = row(44);
+    drawSectionBox(received.top, received.height);
+    page.drawText("Received From :", {
+      x: left + horizontalPad,
+      y: received.top - 26,
+      size: 11,
+      font: titleFont,
+    });
+    const receivedPrefix = `${payload.payerName} for the purpose of Math Maryada for Year:`;
+    page.drawText(receivedPrefix, {
+      x: left + 118,
+      y: received.top - 26,
+      size: 10.5,
+      font: bodyFont,
+    });
+    const receivedPrefixWidth = bodyFont.widthOfTextAtSize(receivedPrefix, 10.5);
+    page.drawText(payload.fy, {
+      x: left + 118 + receivedPrefixWidth + 4,
+      y: received.top - 26,
+      size: 10.5,
+      font: monoFont,
+    });
+
+    const contact = row(72);
+    drawSectionBox(contact.top, contact.height);
+    page.drawText("Address:", { x: left + horizontalPad, y: contact.top - 22, size: 11, font: titleFont });
+    drawWrapped(address.replaceAll("\n", " "), left + 78, contact.top - 22, contentWidth - 96, 10.5, 12);
+    page.drawText("Mobile Number:", {
+      x: left + horizontalPad,
+      y: contact.top - 54,
+      size: 11,
+      font: titleFont,
+    });
+    page.drawText(payerMobile, {
+      x: left + 128,
+      y: contact.top - 54,
+      size: 10.5,
+      font: monoFont,
+    });
+    const emailLabel = "Email ID:";
+    const emailLabelWidth = titleFont.widthOfTextAtSize(emailLabel, 10.5);
+    const emailValueWidth = monoFont.widthOfTextAtSize(payload.payerEmail, 10.5);
+    const emailBaseX = right - horizontalPad - emailLabelWidth - 4 - emailValueWidth;
+    page.drawText(emailLabel, { x: emailBaseX, y: contact.top - 54, size: 10.5, font: titleFont });
+    page.drawText(payload.payerEmail, {
+      x: emailBaseX + emailLabelWidth + 4,
+      y: contact.top - 54,
+      size: 10.5,
+      font: monoFont,
+    });
+
+    const details = row(102);
+    drawSectionBox(details.top, details.height);
+    page.drawText("Math Maryada Payer Details:", {
+      x: left + horizontalPad,
+      y: details.top - 20,
+      size: 11,
+      font: titleFont,
+    });
+
+    const cardX = left + horizontalPad;
+    const cardY = details.top - 92;
+    const cardWidth = contentWidth - 2 * horizontalPad;
+    const cardHeight = 58;
+    page.drawRectangle({
+      x: cardX,
+      y: cardY,
+      width: cardWidth,
+      height: cardHeight,
+      borderColor,
+      borderWidth: 1,
+    });
+    page.drawText("Name:", {
+      x: cardX + 14,
+      y: cardY + 36,
+      size: 10.5,
+      font: titleFont,
+    });
+    page.drawText(payload.payerName, {
+      x: cardX + 54,
+      y: cardY + 36,
+      size: 10.5,
+      font: bodyFont,
+    });
+    page.drawText("Amount:", {
+      x: cardX + 14,
+      y: cardY + 14,
+      size: 10.5,
+      font: titleFont,
+    });
+    page.drawText(formatAmountIndian(payload.totalAmount), {
+      x: cardX + 64,
+      y: cardY + 14,
+      size: 10.5,
+      font: bodyFont,
+    });
+
+    page.drawText("AMOUNT IN WORDS:", {
+      x: left + horizontalPad,
+      y: details.top - 100,
+      size: 11,
+      font: titleFont,
+    });
+    page.drawText("Rupees", {
+      x: left + 168,
+      y: details.top - 100,
+      size: 10.5,
+      font: bodyFont,
+    });
+    page.drawText(`${amountInWords} Only`, {
+      x: left + 208,
+      y: details.top - 100,
+      size: 10.5,
+      font: bodyFont,
+    });
+
+    const payment = row(48);
+    drawSectionBox(payment.top, payment.height);
+    page.drawText("Payment Mode:", {
+      x: left + horizontalPad,
+      y: payment.top - 18,
+      size: 10.5,
+      font: titleFont,
+    });
+    page.drawText(paidBy, {
+      x: left + 116,
+      y: payment.top - 18,
+      size: 10.5,
+      font: monoFont,
+    });
+    page.drawText("Reference Number:", {
+      x: left + horizontalPad,
+      y: payment.top - 36,
+      size: 10.5,
+      font: titleFont,
+    });
+    page.drawText(referenceNo, {
+      x: left + 144,
+      y: payment.top - 36,
+      size: 10.5,
+      font: monoFont,
+    });
+  };
+
   page.drawRectangle({
     x: left,
     y: 36,
@@ -535,6 +698,39 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     size: 9.5,
     font: bodyFont,
   });
+
+  if (isMathMaryada) {
+    drawMathMaryadaPreviewStyleLayout();
+
+    const signers = row(52);
+    drawSectionBox(signers.top, signers.height);
+    const leftSignerX = left + horizontalPad;
+    const rightLabel = "Treasurer Name:";
+    const rightLabelWidth = titleFont.widthOfTextAtSize(rightLabel, 9.5);
+    const rightSignerX = right - horizontalPad - rightLabelWidth;
+    page.drawText("Pratinidhi Name:", { x: leftSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
+    page.drawText(payload.pratinidhiName, { x: leftSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
+    page.drawText(rightLabel, { x: rightSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
+    page.drawText(payload.treasurerName, { x: rightSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
+
+    const footer = row(22);
+    drawSectionBox(footer.top, footer.height);
+    const footerText = "No Signature required as this is a computer generated receipt";
+    const footerTextWidth = bodyFont.widthOfTextAtSize(footerText, 8.5);
+    page.drawText(footerText, {
+      x: left + (contentWidth - footerTextWidth) / 2,
+      y: footer.top - 15,
+      size: 8.5,
+      font: bodyFont,
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    let binary = "";
+    for (const byte of pdfBytes) {
+      binary += String.fromCharCode(byte);
+    }
+    return btoa(binary);
+  }
 
   const summary = row(56);
   drawSectionBox(summary.top, summary.height);
