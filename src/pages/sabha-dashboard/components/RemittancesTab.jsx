@@ -15,7 +15,6 @@ import { supabase } from "../../../supabaseClient";
 import { getRemittanceStatusBadge } from "../../../utils/remittanceStatus.jsx";
 
 const REMITTANCE_MODES = [
-  { value: "CASH", label: "Cash" },
   { value: "CHEQUE", label: "Cheque" },
   { value: "NEFT/RTGS/IMPS", label: "NEFT/RTGS/IMPS" },
   { value: "UPI", label: "UPI" },
