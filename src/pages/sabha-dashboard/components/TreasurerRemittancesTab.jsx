@@ -6,7 +6,6 @@ import Icon from "../../../components/AppIcon";
 import { supabase } from "../../../supabaseClient";
 
 const REMITTANCE_MODES = [
-  { value: "CASH", label: "Cash" },
   { value: "CHEQUE", label: "Cheque" },
   { value: "NEFT/RTGS/IMPS", label: "NEFT/RTGS/IMPS" },
   { value: "UPI", label: "UPI" },
