@@ -60,7 +60,7 @@ const NewEntryForm = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const MAX_ADDITIONAL_MEMBERS = 4;
+  const MAX_ADDITIONAL_MEMBERS = 2;
   const fyOptions = useMemo(() => getFinancialYearOptions(), []);
   const [entryFY, setEntryFY] = useState(getCurrentFinancialYear());
 
@@ -905,7 +905,7 @@ const NewEntryForm = () => {
               {!isMathMaryada && (
                 <div className="flex flex-col items-end gap-2 text-right">
                   <span className="text-xs text-muted-foreground">
-                    Members: {members?.length || 1} / {MAX_ADDITIONAL_MEMBERS + 1} recommended
+                    Members: {members?.length || 1} / {MAX_ADDITIONAL_MEMBERS + 1} maximum
                   </span>
                   <Button
                     type="button"
@@ -923,8 +923,7 @@ const NewEntryForm = () => {
             </div>
             {!isMathMaryada && Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS && (
               <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                You’ve reached the recommended limit of 5 members (Self + 4). If you need to add more, please
-                contact your treasurer.
+                You’ve reached the maximum limit of 3 members (Self + 2).
               </div>
             )}
 
