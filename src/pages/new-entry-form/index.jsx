@@ -569,8 +569,9 @@ const NewEntryForm = () => {
       if (!member?.lastName?.trim()) {
         newErrors[`member_${index}_lastName`] = 'Last name is required';
       }
-      if (!member?.age || member?.age < 1) {
-        newErrors[`member_${index}_age`] = 'Valid age is required';
+      const parsedAge = Number.parseInt(member?.age, 10);
+      if (!Number.isInteger(parsedAge) || parsedAge < 18) {
+        newErrors[`member_${index}_age`] = 'Age must be 18 or above';
       }
       if (!isMathMaryada && !member?.gotra?.trim()) {
         newErrors[`member_${index}_gotra`] = 'Gotra is required';
@@ -970,6 +971,7 @@ const NewEntryForm = () => {
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      min="18"
                       value={member?.age}
                       onChange={(e) => handleMemberChange(index, 'age', e?.target?.value)}
                       placeholder="Age"

@@ -25,7 +25,7 @@ const CommonHeader = () => {
               />
             </div>
             <h1 className="text-xl font-semibold text-card-foreground">
-              Digital Vantiga Reciept System
+              Digital Vantiga Receipt System
             </h1>
           </div>
 
