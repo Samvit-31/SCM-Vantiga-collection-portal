@@ -241,7 +241,7 @@ const Login = () => {
               <img src={logoUrl} alt="SCM Vantiga Portal" className="w-20 h-20" />
             </div>
             <h1 className="text-2xl font-semibold text-card-foreground mb-2">
-              {showForgotPassword ? 'Reset Password' : 'Digital Vantiga Reciept System'}
+              {showForgotPassword ? 'Reset Password' : 'Digital Vantiga Receipt System'}
             </h1>
             <p className="text-sm text-muted-foreground">
               {showForgotPassword
