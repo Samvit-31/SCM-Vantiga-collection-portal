@@ -587,6 +587,12 @@ const NewEntryForm = () => {
       return;
     }
     if (field === 'amount' && !AMOUNT_PATTERN.test(value)) {
+      const errorKey = `member_${index}_${field}`;
+      setTouchedFields((prev) => ({ ...prev, [errorKey]: true }));
+      setErrors((prev) => ({
+        ...prev,
+        [errorKey]: 'Only numbers and one decimal point (up to 2 decimals) are allowed'
+      }));
       return;
     }
 

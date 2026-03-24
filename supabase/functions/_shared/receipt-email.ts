@@ -118,13 +118,16 @@ function formatDate(value: string | null): string {
 
 function formatAmountIndian(value: number): string {
   try {
-    return value.toLocaleString("en-IN");
+    return value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   } catch {
     return value.toFixed(2);
   }
 }
 
-function numberToWords(num: number): string {
+function integerToWordsIndian(num: number): string {
   if (!num || num === 0) return "Zero";
 
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
@@ -154,11 +157,22 @@ function numberToWords(num: number): string {
   if (num < 10000000) {
     const l = Math.floor(num / 100000);
     const r = num % 100000;
-    return `${ltThousand(l)} Lakh${r ? ` ${numberToWords(r)}` : ""}`;
+    return `${ltThousand(l)} Lakh${r ? ` ${integerToWordsIndian(r)}` : ""}`;
   }
   const c = Math.floor(num / 10000000);
   const r = num % 10000000;
-  return `${ltThousand(c)} Crore${r ? ` ${numberToWords(r)}` : ""}`;
+  return `${ltThousand(c)} Crore${r ? ` ${integerToWordsIndian(r)}` : ""}`;
+}
+
+function amountToWordsIndian(value: number): string {
+  const totalPaise = Math.abs(Math.round((Number.isFinite(value) ? value : 0) * 100));
+  const rupees = Math.floor(totalPaise / 100);
+  const paise = totalPaise % 100;
+
+  if (rupees === 0 && paise === 0) return "Zero";
+  if (paise === 0) return integerToWordsIndian(rupees);
+  if (rupees === 0) return `${integerToWordsIndian(paise)} Paise`;
+  return `${integerToWordsIndian(rupees)} and ${integerToWordsIndian(paise)} Paise`;
 }
 
 function yesNo(value: boolean | null | undefined): "Yes" | "No" {
@@ -435,7 +449,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   const paidBy = payload.paidBy || "-";
   const referenceNo = payload.referenceNo || (paidBy === "Cash" ? "Not Applicable" : "-");
   const receiptDate = formatDate(payload.acknowledgedAt || payload.submittedAt);
-  const amountInWords = numberToWords(Math.round(payload.totalAmount));
+  const amountInWords = amountToWordsIndian(payload.totalAmount);
   const payerMobile = payload.payerMobile ? `+91 ${payload.payerMobile}` : "-";
   const address = payload.address || "-";
   const isMathMaryada = payload.entryType === "Math Maryada";

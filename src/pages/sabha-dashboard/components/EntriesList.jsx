@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchEntriesForSabhaFY } from "../../../db/entries";
 import { supabase } from "../../../supabaseClient";
 import { formatReceiptNumber } from "../../../utils/receiptNumber";
+import { formatCurrencyINR } from "../../../utils/amount";
 
 const STATUS_OPTIONS = [
   { value: "ALL", label: "All Status" },
@@ -421,13 +422,7 @@ const EntriesList = forwardRef(({
     });
   };
 
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(Number(amount || 0));
-  };
+  const formatAmount = formatCurrencyINR;
 
   const escapeHtml = (value) => {
     return String(value ?? "")

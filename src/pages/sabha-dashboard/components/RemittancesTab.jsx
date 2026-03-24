@@ -12,6 +12,7 @@ import Select from "../../../components/ui/Select";
 import Button from "../../../components/ui/Button";
 import Icon from "../../../components/AppIcon";
 import { supabase } from "../../../supabaseClient";
+import { formatCurrencyINR } from "../../../utils/amount";
 import { getRemittanceStatusBadge } from "../../../utils/remittanceStatus.jsx";
 
 const REMITTANCE_MODES = [
@@ -39,13 +40,7 @@ const formatDate = (dateString) => {
   });
 };
 
-const formatAmount = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(Number(amount || 0));
-};
+const formatAmount = formatCurrencyINR;
 
 const escapeHtml = (value) => {
   return String(value ?? "")

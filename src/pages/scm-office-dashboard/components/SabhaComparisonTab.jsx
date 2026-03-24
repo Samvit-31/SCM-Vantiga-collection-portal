@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../supabaseClient';
+import { formatCurrencyINR } from '../../../utils/amount';
 
 const SabhaComparisonTab = ({ selectedFY }) => {
   const [sabhaData, setSabhaData] = useState([]);
@@ -12,13 +13,7 @@ const SabhaComparisonTab = ({ selectedFY }) => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    })?.format(Number(amount || 0));
-  };
+  const formatCurrency = formatCurrencyINR;
 
   const calculateAcknowledgementRate = (acknowledged, total) => {
     if (!total || total === 0) return '0.0';

@@ -4,6 +4,7 @@ import Button from "../../../components/ui/Button";
 import Select from "../../../components/ui/Select";
 import Icon from "../../../components/AppIcon";
 import { supabase } from "../../../supabaseClient";
+import { formatCurrencyINR } from "../../../utils/amount";
 import { getRemittanceStatusBadge } from "../../../utils/remittanceStatus.jsx";
 
 const STATUS_OPTIONS = [
@@ -23,13 +24,7 @@ const formatDate = (dateString) => {
   });
 };
 
-const formatAmount = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0
-  }).format(Number(amount || 0));
-};
+const formatAmount = formatCurrencyINR;
 
 const downloadCsv = (headers, rows, filename) => {
   const toCsvValue = (value) => {

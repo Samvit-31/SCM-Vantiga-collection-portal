@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import Icon from '../../../components/AppIcon';
 import Select from '../../../components/ui/Select';
+import { formatCurrencyINR } from '../../../utils/amount';
 
 const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
 const ENTRY_TYPE_OPTIONS = [
@@ -53,13 +54,7 @@ const SummaryView = forwardRef(({
   const getEntryMembers = (entry) =>
     entry?.members || entry?.family?.family_members || entry?.families?.family_members || [];
 
-  const formatAmount = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    })?.format(amount || 0);
-  };
+  const formatAmount = formatCurrencyINR;
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';

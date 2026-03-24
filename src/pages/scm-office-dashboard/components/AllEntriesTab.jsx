@@ -5,6 +5,7 @@ import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
+import { formatCurrencyINR } from '../../../utils/amount';
 
 const AllEntriesTab = ({ selectedFY }) => {
   const navigate = useNavigate();
@@ -21,13 +22,7 @@ const AllEntriesTab = ({ selectedFY }) => {
   const exportRef = useRef(null);
 
   // ---- Helpers ----
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    })?.format(Number(amount || 0));
-  };
+  const formatCurrency = formatCurrencyINR;
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';

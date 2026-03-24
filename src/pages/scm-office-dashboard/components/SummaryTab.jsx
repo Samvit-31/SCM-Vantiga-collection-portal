@@ -3,6 +3,7 @@ import Icon from "../../../components/AppIcon";
 import Button from "../../../components/ui/Button";
 import Select from "../../../components/ui/Select";
 import { supabase } from "../../../supabaseClient";
+import { formatCurrencyINR } from "../../../utils/amount";
 
 import {
   PieChart,
@@ -18,13 +19,7 @@ import {
 } from "recharts";
 
 // ---------- Helpers ----------
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0));
-};
+const formatCurrency = formatCurrencyINR;
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";

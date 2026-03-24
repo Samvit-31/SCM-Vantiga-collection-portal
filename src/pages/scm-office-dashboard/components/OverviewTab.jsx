@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Icon from '../../../components/AppIcon';
 import { supabase } from '../../../supabaseClient';
+import { formatCurrencyINR } from '../../../utils/amount';
 
 const OverviewTab = ({ selectedFY }) => {
   const [loading, setLoading] = useState(false);
@@ -20,13 +21,7 @@ const OverviewTab = ({ selectedFY }) => {
 
   const [topPerformingSabhas, setTopPerformingSabhas] = useState([]);
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0
-    })?.format(Number(amount || 0));
-  };
+  const formatCurrency = formatCurrencyINR;
 
   const escapeHtml = (value) => {
     return String(value ?? '')

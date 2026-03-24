@@ -5,44 +5,7 @@ import { jsPDF } from 'jspdf';
 import Button from '../../components/ui/Button';
 import CommonHeader from 'components/ui/CommonHeader';
 import { supabase } from '../../supabaseClient';
-
-// Utility: convert number to words (Indian numbering system)
-const numberToWords = (num) => {
-  if (!num || num === 0) return 'Zero';
-
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-
-  const ltThousand = (n) => {
-    if (n === 0) return '';
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) {
-      const t = Math.floor(n / 10);
-      const o = n % 10;
-      return tens[t] + (o ? ` ${ones[o]}` : '');
-    }
-    const h = Math.floor(n / 100);
-    const r = n % 100;
-    return `${ones[h]} Hundred${r ? ` ${ltThousand(r)}` : ''}`;
-  };
-
-  if (num < 1000) return ltThousand(num);
-  if (num < 100000) {
-    const th = Math.floor(num / 1000);
-    const r = num % 1000;
-    return `${ltThousand(th)} Thousand${r ? ` ${ltThousand(r)}` : ''}`;
-  }
-  if (num < 10000000) {
-    const l = Math.floor(num / 100000);
-    const r = num % 100000;
-    return `${ltThousand(l)} Lakh${r ? ` ${numberToWords(r)}` : ''}`;
-  }
-  const c = Math.floor(num / 10000000);
-  const r = num % 10000000;
-  return `${ltThousand(c)} Crore${r ? ` ${numberToWords(r)}` : ''}`;
-};
+import { amountToWordsIndian, formatAmountIndian } from '../../utils/amount';
 
 const formatDate = (dateString) => {
   try {
@@ -51,11 +14,6 @@ const formatDate = (dateString) => {
   } catch {
     return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   }
-};
-
-const formatAmountIndian = (value) => {
-  const amount = Number(value || 0);
-  return amount.toLocaleString('en-IN');
 };
 
 const toReceiptFileSafeName = (receiptNo) => {
@@ -447,7 +405,7 @@ const ReceiptPreview = ({ standalone = false }) => {
   if (!entry) return null;
 
   const totalAmount = members.reduce((sum, m) => sum + (Number(m?.amount) || 0), 0);
-  const amountInWords = numberToWords(totalAmount);
+  const amountInWords = amountToWordsIndian(totalAmount);
 
   const receiptDate = formatDate(entry?.acknowledgedDate || entry?.submittedDate || new Date().toISOString());
 
