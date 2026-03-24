@@ -93,6 +93,7 @@ const NewEntryForm = () => {
   ]);
 
   const [errors, setErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
 
   // Duplicate warnings
   const [duplicateWarnings, setDuplicateWarnings] = useState([]);
@@ -418,18 +419,97 @@ const NewEntryForm = () => {
     { value: 'Math Maryada', label: 'Math Maryada' }
   ];
 
+  const AGE_PATTERN = /^\d+$/;
+  const AGE_INPUT_PATTERN = /^\d*$/;
+  const AMOUNT_PATTERN = /^\d*\.?\d{0,2}$/;
+
+  const validateTopLevelField = (name, value, nextFormData = formData) => {
+    const normalizedValue = typeof value === 'string' ? value.trim() : value;
+
+    if (name === 'entryType' && !normalizedValue) {
+      return 'Entry type is required';
+    }
+
+    if (name === 'sabha') {
+      if (!normalizedValue) return 'Sabha is required';
+      if (!userProfile?.sabhaId) return 'Sabha is not mapped to your user. Please contact admin.';
+    }
+
+    if (name === 'address' && !normalizedValue) {
+      return 'Address is required';
+    }
+
+    if (name === 'payerMobile') {
+      if (!normalizedValue) return 'Mobile number is required';
+      if (!/^\d{10}$/.test(normalizedValue)) return 'Mobile number must be exactly 10 digits';
+    }
+
+    if (name === 'payerEmail') {
+      if (!normalizedValue) return 'Email is required';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedValue)) return 'Invalid email format';
+    }
+
+    if (name === 'referenceNo' && nextFormData?.paidBy !== 'Cash' && !normalizedValue) {
+      return 'Reference number is required for non-cash payments';
+    }
+
+    if (name === 'entryFY' && !value) {
+      return 'Entry FY is required';
+    }
+
+    return '';
+  };
+
+  const validateMemberField = (member, index, field) => {
+    const rawValue = member?.[field];
+    const normalizedValue = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+
+    if (field === 'firstName' && !normalizedValue) {
+      return 'First name is required';
+    }
+
+    if (field === 'lastName' && !normalizedValue) {
+      return 'Last name is required';
+    }
+
+    if (field === 'age') {
+      if (!normalizedValue) return 'Age is required';
+      if (!AGE_PATTERN.test(normalizedValue)) return 'Age must contain digits only';
+      const parsedAge = Number.parseInt(normalizedValue, 10);
+      if (!Number.isInteger(parsedAge) || parsedAge < 18) {
+        return 'Age must be 18 or above';
+      }
+    }
+
+    if (field === 'gotra' && !isMathMaryada && !normalizedValue) {
+      return 'Gotra is required';
+    }
+
+    if (field === 'amount') {
+      if (!normalizedValue) return 'Valid amount is required';
+      if (!AMOUNT_PATTERN.test(normalizedValue)) return 'Enter a valid amount';
+      const parsedAmount = Number.parseFloat(normalizedValue);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        return 'Valid amount is required';
+      }
+    }
+
+    return '';
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e?.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors?.[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    const nextFormData = { ...formData, [name]: value };
+
+    setFormData(nextFormData);
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({ ...prev, [name]: validateTopLevelField(name, value, nextFormData) }));
   };
 
   const handleSelectChange = (name, value) => {
     if (name === 'entryType') {
-      setFormData(prev => ({
-        ...prev,
+      const nextFormData = {
+        ...formData,
         entryType: value,
         ...(value === 'Math Maryada'
           ? {
@@ -438,9 +518,31 @@ const NewEntryForm = () => {
               optShowEmailInDirectory: 'No'
             }
           : {})
-      }));
+      };
+
+      setFormData(nextFormData);
+      setTouchedFields((prev) => ({ ...prev, entryType: true }));
+      setErrors((prev) => {
+        const nextErrors = {
+          ...prev,
+          entryType: validateTopLevelField('entryType', value, nextFormData)
+        };
+        if (value === 'Math Maryada') {
+          Object.keys(nextErrors)
+            .filter((key) => key.includes('_gotra'))
+            .forEach((key) => delete nextErrors[key]);
+        }
+        return nextErrors;
+      });
 
       if (value === 'Math Maryada') {
+        setTouchedFields((prev) => {
+          const nextTouched = { ...prev };
+          Object.keys(nextTouched)
+            .filter((key) => key.includes('_gotra'))
+            .forEach((key) => delete nextTouched[key]);
+          return nextTouched;
+        });
         setMembers((prev) => {
           const primaryMember = prev?.[0] || {};
           return [{
@@ -455,33 +557,39 @@ const NewEntryForm = () => {
           }];
         });
       }
-
-      setErrors((prev) => {
-        const nextErrors = { ...prev };
-        delete nextErrors.entryType;
-        Object.keys(nextErrors)
-          .filter((key) => key.includes('_gotra'))
-          .forEach((key) => delete nextErrors[key]);
-        return nextErrors;
-      });
       return;
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors?.[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    const nextFormData = { ...formData, [name]: value };
+    setFormData(nextFormData);
+    setTouchedFields((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => {
+      const nextErrors = {
+        ...prev,
+        [name]: validateTopLevelField(name, value, nextFormData)
+      };
+      if (name === 'paidBy') {
+        nextErrors.referenceNo = validateTopLevelField('referenceNo', nextFormData?.referenceNo, nextFormData);
+      }
+      return nextErrors;
+    });
   };
 
   const handleEntryFYChange = (value) => {
     setEntryFY(value);
-    if (errors?.entryFY) {
-      setErrors((prev) => ({ ...prev, entryFY: '' }));
-    }
+    setTouchedFields((prev) => ({ ...prev, entryFY: true }));
+    setErrors((prev) => ({ ...prev, entryFY: validateTopLevelField('entryFY', value) }));
   };
 
   // Member change + gotra auto-copy from member 1
   const handleMemberChange = (index, field, value) => {
+    if (field === 'age' && !AGE_INPUT_PATTERN.test(value)) {
+      return;
+    }
+    if (field === 'amount' && !AMOUNT_PATTERN.test(value)) {
+      return;
+    }
+
     const updatedMembers = [...members];
     updatedMembers[index] = { ...updatedMembers?.[index], [field]: value };
 
@@ -494,9 +602,9 @@ const NewEntryForm = () => {
     }
 
     setMembers(updatedMembers);
-    if (errors?.[`member_${index}_${field}`]) {
-      setErrors(prev => ({ ...prev, [`member_${index}_${field}`]: '' }));
-    }
+    const errorKey = `member_${index}_${field}`;
+    setTouchedFields((prev) => ({ ...prev, [errorKey]: true }));
+    setErrors((prev) => ({ ...prev, [errorKey]: validateMemberField(updatedMembers?.[index], index, field) }));
   };
 
   const addMember = () => {
@@ -526,6 +634,12 @@ const NewEntryForm = () => {
     }
     const updatedMembers = members?.filter((_, i) => i !== index);
     setMembers(updatedMembers);
+    setErrors((prev) => Object.fromEntries(
+      Object.entries(prev).filter(([key]) => !key.startsWith('member_'))
+    ));
+    setTouchedFields((prev) => Object.fromEntries(
+      Object.entries(prev).filter(([key]) => !key.startsWith('member_'))
+    ));
   };
 
   const calculateTotalAmount = () => {
@@ -534,62 +648,65 @@ const NewEntryForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    const requiredTopFields = ['entryType', 'sabha', 'address', 'payerMobile', 'payerEmail', 'entryFY'];
 
-    if (!formData?.entryType) {
-      newErrors.entryType = 'Entry type is required';
-    }
-
-    if (!formData?.sabha?.trim()) {
-      newErrors.sabha = 'Sabha is required';
-    }
-    if (!formData?.address?.trim()) {
-      newErrors.address = 'Address is required';
-    }
-
-    if (!formData?.payerMobile?.trim()) {
-      newErrors.payerMobile = 'Mobile number is required';
-    } else if (!/^\d{10}$/?.test(formData?.payerMobile)) {
-      newErrors.payerMobile = 'Mobile number must be exactly 10 digits';
-    }
-
-    if (!formData?.payerEmail?.trim()) {
-      newErrors.payerEmail = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.payerEmail)) {
-      newErrors.payerEmail = 'Invalid email format';
-    }
-
-    if (formData?.paidBy !== 'Cash' && !formData?.referenceNo?.trim()) {
-      newErrors.referenceNo = 'Reference number is required for non-cash payments';
-    }
-
-    members?.forEach((member, index) => {
-      if (!member?.firstName?.trim()) {
-        newErrors[`member_${index}_firstName`] = 'First name is required';
-      }
-      if (!member?.lastName?.trim()) {
-        newErrors[`member_${index}_lastName`] = 'Last name is required';
-      }
-      const parsedAge = Number.parseInt(member?.age, 10);
-      if (!Number.isInteger(parsedAge) || parsedAge < 18) {
-        newErrors[`member_${index}_age`] = 'Age must be 18 or above';
-      }
-      if (!isMathMaryada && !member?.gotra?.trim()) {
-        newErrors[`member_${index}_gotra`] = 'Gotra is required';
-      }
-      if (!member?.amount || parseFloat(member?.amount) <= 0) {
-        newErrors[`member_${index}_amount`] = 'Valid amount is required';
+    requiredTopFields.forEach((fieldName) => {
+      const value = fieldName === 'entryFY' ? entryFY : formData?.[fieldName];
+      const fieldError = validateTopLevelField(fieldName, value, formData);
+      if (fieldError) {
+        newErrors[fieldName] = fieldError;
       }
     });
 
-    // IMPORTANT: sabhaId is required to insert properly into vantiga_entries
-    if (!userProfile?.sabhaId) {
-      newErrors.sabha = 'Sabha is not mapped to your user. Please contact admin.';
-    }
-    if (!entryFY) {
-      newErrors.entryFY = 'Entry FY is required';
+    if (formData?.paidBy !== 'Cash') {
+      const refError = validateTopLevelField('referenceNo', formData?.referenceNo, formData);
+      if (refError) {
+        newErrors.referenceNo = refError;
+      }
     }
 
+    members?.forEach((member, index) => {
+      ['firstName', 'lastName', 'age', 'amount'].forEach((field) => {
+        const fieldError = validateMemberField(member, index, field);
+        if (fieldError) {
+          newErrors[`member_${index}_${field}`] = fieldError;
+        }
+      });
+
+      if (!isMathMaryada) {
+        const gotraError = validateMemberField(member, index, 'gotra');
+        if (gotraError) {
+          newErrors[`member_${index}_gotra`] = gotraError;
+        }
+      }
+    });
+
     setErrors(newErrors);
+    setTouchedFields((prev) => {
+      const nextTouched = {
+        ...prev,
+        entryType: true,
+        sabha: true,
+        address: true,
+        payerMobile: true,
+        payerEmail: true,
+        entryFY: true
+      };
+      if (formData?.paidBy !== 'Cash') {
+        nextTouched.referenceNo = true;
+      }
+      members?.forEach((member, index) => {
+        nextTouched[`member_${index}_firstName`] = true;
+        nextTouched[`member_${index}_lastName`] = true;
+        nextTouched[`member_${index}_age`] = true;
+        nextTouched[`member_${index}_amount`] = true;
+        if (!isMathMaryada) {
+          nextTouched[`member_${index}_gotra`] = true;
+        }
+      });
+      return nextTouched;
+    });
+
     return Object.keys(newErrors)?.length === 0;
   };
 
@@ -805,7 +922,7 @@ const NewEntryForm = () => {
                 onChange={handleEntryFYChange}
                 options={fyOptions}
                 required
-                error={errors?.entryFY}
+                error={touchedFields?.entryFY ? errors?.entryFY : ''}
               />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -818,7 +935,7 @@ const NewEntryForm = () => {
                 onChange={(value) => handleSelectChange('entryType', value)}
                 options={entryTypeOptions}
                 required
-                error={errors?.entryType}
+                error={touchedFields?.entryType ? errors?.entryType : ''}
               />
             </div>
           </div>
@@ -956,7 +1073,7 @@ const NewEntryForm = () => {
                       onChange={(e) => handleMemberChange(index, 'firstName', e?.target?.value)}
                       placeholder="First name"
                       required
-                      error={errors?.[`member_${index}_firstName`]}
+                      error={touchedFields?.[`member_${index}_firstName`] ? errors?.[`member_${index}_firstName`] : ''}
                     />
                     <Input
                       label="Last Name"
@@ -964,7 +1081,7 @@ const NewEntryForm = () => {
                       onChange={(e) => handleMemberChange(index, 'lastName', e?.target?.value)}
                       placeholder="Last name"
                       required
-                      error={errors?.[`member_${index}_lastName`]}
+                      error={touchedFields?.[`member_${index}_lastName`] ? errors?.[`member_${index}_lastName`] : ''}
                     />
                     <Input
                       label="Age"
@@ -976,7 +1093,7 @@ const NewEntryForm = () => {
                       onChange={(e) => handleMemberChange(index, 'age', e?.target?.value)}
                       placeholder="Age"
                       required
-                      error={errors?.[`member_${index}_age`]}
+                      error={touchedFields?.[`member_${index}_age`] ? errors?.[`member_${index}_age`] : ''}
                     />
                     <Select
                       label="Gender"
@@ -993,7 +1110,7 @@ const NewEntryForm = () => {
                         options={gotraOptions}
                         placeholder="Select Gotra"
                         required
-                        error={errors?.[`member_${index}_gotra`]}
+                        error={touchedFields?.[`member_${index}_gotra`] ? errors?.[`member_${index}_gotra`] : ''}
                         disabled={index > 0}
                         title={index > 0 ? 'Gotra is auto-populated from Member 1' : ''}
                       />
@@ -1006,7 +1123,7 @@ const NewEntryForm = () => {
                       onChange={(e) => handleMemberChange(index, 'amount', e?.target?.value)}
                       placeholder="Amount"
                       required
-                      error={errors?.[`member_${index}_amount`]}
+                      error={touchedFields?.[`member_${index}_amount`] ? errors?.[`member_${index}_amount`] : ''}
                     />
                   </div>
                   {!isMathMaryada && index > 0 && (
@@ -1048,7 +1165,7 @@ const NewEntryForm = () => {
                 readOnly
                 placeholder="e.g., Bangalore"
                 required
-                error={errors?.sabha}
+                error={touchedFields?.sabha ? errors?.sabha : ''}
                 title="Sabha is auto-mapped from your profile"
               />
               <div className="md:col-span-2">
@@ -1063,7 +1180,7 @@ const NewEntryForm = () => {
                   rows={3}
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                 />
-                {errors?.address && (
+                {touchedFields?.address && errors?.address && (
                   <p className="text-sm text-destructive mt-2">{errors?.address}</p>
                 )}
               </div>
@@ -1075,7 +1192,7 @@ const NewEntryForm = () => {
                 onChange={handleInputChange}
                 placeholder="10-digit mobile number"
                 required
-                error={errors?.payerMobile}
+                error={touchedFields?.payerMobile ? errors?.payerMobile : ''}
               />
               <Input
                 label="Email ID"
@@ -1085,7 +1202,7 @@ const NewEntryForm = () => {
                 onChange={handleInputChange}
                 placeholder="email@example.com"
                 required
-                error={errors?.payerEmail}
+                error={touchedFields?.payerEmail ? errors?.payerEmail : ''}
               />
             </div>
           </div>
@@ -1112,7 +1229,7 @@ const NewEntryForm = () => {
                   onChange={handleInputChange}
                   placeholder="Enter cheque/transaction reference"
                   required
-                  error={errors?.referenceNo}
+                  error={touchedFields?.referenceNo ? errors?.referenceNo : ''}
                 />
               )}
             </div>

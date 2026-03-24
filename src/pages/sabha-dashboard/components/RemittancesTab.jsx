@@ -19,6 +19,7 @@ const REMITTANCE_MODES = [
   { value: "NEFT/RTGS/IMPS", label: "NEFT/RTGS/IMPS" },
   { value: "UPI", label: "UPI" },
 ];
+const AMOUNT_PATTERN = /^\d*\.?\d{0,2}$/;
 
 const getTodayInputValue = () => {
   const now = new Date();
@@ -125,6 +126,7 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
 
   const [formData, setFormData] = useState({
     remittedAt: getTodayInputValue(),
@@ -134,6 +136,36 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
     bankName: "",
     remarks: ""
   });
+
+  const validateField = (field, value, nextFormData = formData) => {
+    const normalizedValue = typeof value === "string" ? value.trim() : value;
+
+    if (field === "remittedAt" && !normalizedValue) {
+      return "Date is required";
+    }
+
+    if (field === "remittedAmount") {
+      const rawValue = String(value ?? "").trim();
+      if (!rawValue) return "Amount is required";
+      if (!AMOUNT_PATTERN.test(rawValue)) return "Enter a valid amount";
+      const amountValue = Number(rawValue);
+      if (!amountValue || amountValue <= 0) return "Amount must be greater than 0";
+    }
+
+    if (field === "remittanceMode" && !normalizedValue) {
+      return "Mode is required";
+    }
+
+    if (field === "referenceNo" && !String(nextFormData?.referenceNo ?? "").trim()) {
+      return "Reference no is required";
+    }
+
+    if (field === "bankName" && !String(nextFormData?.bankName ?? "").trim()) {
+      return "Bank name is required";
+    }
+
+    return "";
+  };
 
   const fetchRemittances = useCallback(async () => {
     if (!sabhaId || !selectedFY) return;
@@ -248,35 +280,42 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
   }, [remittances, totalCollectedAck]);
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors?.[field]) {
-      setFieldErrors((prev) => ({ ...prev, [field]: "" }));
+    if (field === "remittedAmount") {
+      const nextAmount = String(value ?? "");
+      if (!AMOUNT_PATTERN.test(nextAmount)) {
+        return;
+      }
     }
+
+    const nextFormData = { ...formData, [field]: value };
+    setFormData(nextFormData);
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, value, nextFormData) }));
+  };
+
+  const handleFieldBlur = (field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, formData?.[field], formData) }));
   };
 
   const validateForm = () => {
+    const requiredFields = ["remittedAt", "remittedAmount", "remittanceMode", "referenceNo", "bankName"];
     const nextErrors = {};
-    const amountValue = Number(formData?.remittedAmount || 0);
-    const referenceValue = formData?.referenceNo?.trim();
-    const bankValue = formData?.bankName?.trim();
 
-    if (!formData?.remittedAt) {
-      nextErrors.remittedAt = "Date is required";
-    }
-    if (!amountValue || amountValue <= 0) {
-      nextErrors.remittedAmount = "Amount must be greater than 0";
-    }
-    if (!formData?.remittanceMode) {
-      nextErrors.remittanceMode = "Mode is required";
-    }
-    if (!referenceValue) {
-      nextErrors.referenceNo = "Reference no is required";
-    }
-    if (!bankValue) {
-      nextErrors.bankName = "Bank name is required";
-    }
+    requiredFields.forEach((field) => {
+      const error = validateField(field, formData?.[field], formData);
+      if (error) nextErrors[field] = error;
+    });
 
     setFieldErrors(nextErrors);
+    setTouchedFields((prev) => ({
+      ...prev,
+      remittedAt: true,
+      remittedAmount: true,
+      remittanceMode: true,
+      referenceNo: true,
+      bankName: true
+    }));
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -326,6 +365,7 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
         remarks: ""
       });
       setFieldErrors({});
+      setTouchedFields({});
       await fetchRemittances();
       toast.success("Remittance submitted for verification");
     } catch (err) {
@@ -477,7 +517,8 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               label="Remitted Date"
               value={formData.remittedAt}
               onChange={(e) => handleFieldChange("remittedAt", e?.target?.value)}
-              error={fieldErrors.remittedAt}
+              onBlur={() => handleFieldBlur("remittedAt")}
+              error={touchedFields?.remittedAt ? fieldErrors.remittedAt : ""}
               required
               disabled={isSubmitting}
             />
@@ -487,7 +528,12 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               placeholder="Enter amount"
               value={formData.remittedAmount}
               onChange={(e) => handleFieldChange("remittedAmount", e?.target?.value)}
-              error={fieldErrors.remittedAmount}
+              onBlur={() => handleFieldBlur("remittedAmount")}
+              step="0.01"
+              min="0"
+              hideNumberSpinners
+              disableWheelNumberChange
+              error={touchedFields?.remittedAmount ? fieldErrors.remittedAmount : ""}
               required
               disabled={isSubmitting}
             />
@@ -496,7 +542,7 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               value={formData.remittanceMode}
               onChange={(value) => handleFieldChange("remittanceMode", value)}
               options={REMITTANCE_MODES}
-              error={fieldErrors.remittanceMode}
+              error={touchedFields?.remittanceMode ? fieldErrors.remittanceMode : ""}
               required
               disabled={isSubmitting}
             />
@@ -508,7 +554,8 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               placeholder="Enter reference no"
               value={formData.referenceNo}
               onChange={(e) => handleFieldChange("referenceNo", e?.target?.value)}
-              error={fieldErrors.referenceNo}
+              onBlur={() => handleFieldBlur("referenceNo")}
+              error={touchedFields?.referenceNo ? fieldErrors.referenceNo : ""}
               required
               disabled={isSubmitting}
             />
@@ -517,7 +564,8 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               placeholder="Enter bank name"
               value={formData.bankName}
               onChange={(e) => handleFieldChange("bankName", e?.target?.value)}
-              error={fieldErrors.bankName}
+              onBlur={() => handleFieldBlur("bankName")}
+              error={touchedFields?.bankName ? fieldErrors.bankName : ""}
               required
               disabled={isSubmitting}
             />

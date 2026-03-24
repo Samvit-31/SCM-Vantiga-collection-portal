@@ -10,6 +10,7 @@ const REMITTANCE_MODES = [
   { value: "NEFT/RTGS/IMPS", label: "NEFT/RTGS/IMPS" },
   { value: "UPI", label: "UPI" },
 ];
+const AMOUNT_PATTERN = /^\d*\.?\d{0,2}$/;
 
 const STATUS_STYLES = {
   SUBMITTED: "bg-blue-100 text-blue-700 border-blue-200",
@@ -51,6 +52,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
 
   const [formData, setFormData] = useState({
     remittedAt: getTodayInputValue(),
@@ -60,6 +62,28 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
     bankName: "",
     remarks: ""
   });
+
+  const validateField = (field, value) => {
+    const normalizedValue = typeof value === "string" ? value.trim() : value;
+
+    if (field === "remittedAt" && !normalizedValue) {
+      return "Remitted date is required";
+    }
+
+    if (field === "remittedAmount") {
+      const rawValue = String(value ?? "").trim();
+      if (!rawValue) return "Amount is required";
+      if (!AMOUNT_PATTERN.test(rawValue)) return "Enter a valid amount";
+      const amountValue = Number(rawValue);
+      if (!amountValue || amountValue <= 0) return "Amount must be greater than 0";
+    }
+
+    if (field === "remittanceMode" && !normalizedValue) {
+      return "Remittance mode is required";
+    }
+
+    return "";
+  };
 
   const sabhaId = userProfile?.sabhaId;
 
@@ -143,28 +167,41 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
   }, [remittances]);
 
   const handleFieldChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (fieldErrors?.[field]) {
-      setFieldErrors((prev) => ({ ...prev, [field]: "" }));
+    if (field === "remittedAmount") {
+      const nextAmount = String(value ?? "");
+      if (!AMOUNT_PATTERN.test(nextAmount)) {
+        return;
+      }
     }
+
+    const nextFormData = { ...formData, [field]: value };
+    setFormData(nextFormData);
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, nextFormData?.[field]) }));
     if (formError) setFormError("");
   };
 
-  const validateForm = () => {
-    const nextErrors = {};
-    const amountValue = Number(formData?.remittedAmount || 0);
+  const handleFieldBlur = (field) => {
+    setTouchedFields((prev) => ({ ...prev, [field]: true }));
+    setFieldErrors((prev) => ({ ...prev, [field]: validateField(field, formData?.[field]) }));
+  };
 
-    if (!amountValue || amountValue <= 0) {
-      nextErrors.remittedAmount = "Amount must be greater than 0";
-    }
-    if (!formData?.remittanceMode) {
-      nextErrors.remittanceMode = "Remittance mode is required";
-    }
-    if (!formData?.remittedAt) {
-      nextErrors.remittedAt = "Remitted date is required";
-    }
+  const validateForm = () => {
+    const requiredFields = ["remittedAmount", "remittanceMode", "remittedAt"];
+    const nextErrors = {};
+
+    requiredFields.forEach((field) => {
+      const error = validateField(field, formData?.[field]);
+      if (error) nextErrors[field] = error;
+    });
 
     setFieldErrors(nextErrors);
+    setTouchedFields((prev) => ({
+      ...prev,
+      remittedAmount: true,
+      remittanceMode: true,
+      remittedAt: true
+    }));
     return Object.keys(nextErrors).length === 0;
   };
 
@@ -213,6 +250,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
         remarks: ""
       });
       setFieldErrors({});
+      setTouchedFields({});
       await fetchRemittances();
     } catch (err) {
       console.error("Failed to submit remittance", err);
@@ -291,7 +329,8 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
               label="Remitted Date"
               value={formData.remittedAt}
               onChange={(e) => handleFieldChange("remittedAt", e?.target?.value)}
-              error={fieldErrors.remittedAt}
+              onBlur={() => handleFieldBlur("remittedAt")}
+              error={touchedFields?.remittedAt ? fieldErrors.remittedAt : ""}
               required
               disabled={isSubmitting}
             />
@@ -301,7 +340,12 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
               placeholder="Enter amount"
               value={formData.remittedAmount}
               onChange={(e) => handleFieldChange("remittedAmount", e?.target?.value)}
-              error={fieldErrors.remittedAmount}
+              onBlur={() => handleFieldBlur("remittedAmount")}
+              step="0.01"
+              min="0"
+              hideNumberSpinners
+              disableWheelNumberChange
+              error={touchedFields?.remittedAmount ? fieldErrors.remittedAmount : ""}
               required
               disabled={isSubmitting}
             />
@@ -310,7 +354,7 @@ const TreasurerRemittancesTab = ({ selectedFY, userProfile }) => {
               value={formData.remittanceMode}
               onChange={(value) => handleFieldChange("remittanceMode", value)}
               options={REMITTANCE_MODES}
-              error={fieldErrors.remittanceMode}
+              error={touchedFields?.remittanceMode ? fieldErrors.remittanceMode : ""}
               required
               disabled={isSubmitting}
             />
