@@ -1005,7 +1005,6 @@ const EntriesList = forwardRef(({
             <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Entry Details</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">ID: {selectedEntry?.entryId}</p>
               </div>
               <button
                 onClick={closeDrawer}
@@ -1192,7 +1191,7 @@ const EntriesList = forwardRef(({
                             <tr key={member?.memberId} className="hover:bg-muted/20">
                               <td className="px-3 py-2 text-foreground font-medium">
                                 {member?.name}
-                                {member?.isPrimaryPayer && <span className="ml-2 text-xs text-primary">(Self 1)</span>}
+                                {member?.isPrimaryPayer}
                               </td>
                               <td className="px-3 py-2 text-center text-foreground">{member?.age}</td>
                               <td className="px-3 py-2 text-foreground">{member?.gotra}</td>
