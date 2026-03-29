@@ -60,6 +60,7 @@ const NewEntryForm = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const MAX_ADDITIONAL_MEMBERS = 2;
   const fyOptions = useMemo(() => getFinancialYearOptions(), []);
   const [entryFY, setEntryFY] = useState(getCurrentFinancialYear());
@@ -727,7 +728,7 @@ const NewEntryForm = () => {
   // Best practice: do this in a Postgres RPC function (server-side transaction).
   // For MVP, this is acceptable; later we’ll convert to RPC.
   // -----------------------
-  const handleSubmit = async (e) => {
+  const handlePreviewOpen = (e) => {
     e?.preventDefault();
 
     if (!validateForm()) {
@@ -735,6 +736,15 @@ const NewEntryForm = () => {
       return;
     }
 
+    setIsPreviewOpen(true);
+  };
+
+  const handlePreviewClose = () => {
+    if (isSubmitting) return;
+    setIsPreviewOpen(false);
+  };
+
+  const handleConfirmSubmit = async () => {
     setIsSubmitting(true);
 
     try {
@@ -815,6 +825,7 @@ const NewEntryForm = () => {
       if (entryErr) throw entryErr;
 
       toast?.success('Entry submitted successfully');
+      setIsPreviewOpen(false);
 
       setTimeout(() => {
         navigate('/sabha-dashboard', { state: { activeTab: 'entries' } });
@@ -846,6 +857,9 @@ const NewEntryForm = () => {
       year: 'numeric'
     });
   };
+
+  const previewMembers = isMathMaryada ? members?.slice(0, 1) : members;
+  const previewTotalAmount = calculateTotalAmount();
 
   if (loading) {
     return (
@@ -915,7 +929,7 @@ const NewEntryForm = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
+        <form onSubmit={handlePreviewOpen} className="max-w-4xl mx-auto space-y-8">
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-card-foreground mb-4 flex items-center gap-2">
               <Icon name="Calendar" size={20} />
@@ -1300,6 +1314,173 @@ const NewEntryForm = () => {
           </div>
         </form>
       </main>
+
+      {isPreviewOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={handlePreviewClose} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-card border border-border rounded-lg shadow-2xl">
+              <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-card-foreground">Confirm Entry Before Submit</h3>
+                  <p className="text-sm text-muted-foreground">Please review all details carefully before final submission.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePreviewClose}
+                  disabled={isSubmitting}
+                  className="p-2 rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Close preview"
+                >
+                  <Icon name="X" size={18} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-md border border-border bg-muted/30 p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Entry FY</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{entryFY}</p>
+                  </div>
+                  <div className="rounded-md border border-border bg-muted/30 p-4">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Entry Type</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{formData?.entryType}</p>
+                  </div>
+                </div>
+
+                <section className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-semibold text-foreground mb-3">
+                    {isMathMaryada ? 'Primary Payer Details' : 'Members'}
+                  </h4>
+                  <div className="space-y-3">
+                    {previewMembers?.map((member, index) => (
+                      <div key={member?.id || index} className="rounded-md border border-border bg-muted/20 p-3">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-2 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Name</p>
+                            <p className="font-medium text-foreground">{`${member?.firstName || ''} ${member?.lastName || ''}`.trim() || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Age</p>
+                            <p className="font-medium text-foreground">{member?.age || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Gender</p>
+                            <p className="font-medium text-foreground">{member?.gender || '-'}</p>
+                          </div>
+                          {!isMathMaryada && (
+                            <div>
+                              <p className="text-xs text-muted-foreground">Gotra</p>
+                              <p className="font-medium text-foreground">{member?.gotra || '-'}</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs text-muted-foreground">Amount</p>
+                            <p className="font-semibold text-foreground">Rs. {Number(member?.amount || 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Total Amount</p>
+                    <p className="text-base font-bold text-foreground">Rs. {previewTotalAmount.toFixed(2)}</p>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-semibold text-foreground mb-3">
+                    {isMathMaryada ? 'Payer Contact Details' : 'Family Information'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sabha</p>
+                      <p className="font-medium text-foreground">{formData?.sabha || '-'}</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-xs text-muted-foreground">Address</p>
+                      <p className="font-medium text-foreground whitespace-pre-line">{formData?.address || '-'}</p>
+                    </div>
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+                      <p className="text-xs text-amber-700">Mobile Number (Verify carefully)</p>
+                      <p className="font-semibold text-amber-900">{formData?.payerMobile || '-'}</p>
+                    </div>
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+                      <p className="text-xs text-amber-700">Email ID (Verify carefully)</p>
+                      <p className="font-semibold text-amber-900 break-all">{formData?.payerEmail || '-'}</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Payment Details</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Payment Mode</p>
+                      <p className="font-medium text-foreground">{formData?.paidBy || '-'}</p>
+                    </div>
+                    {formData?.paidBy !== 'Cash' && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Reference Number</p>
+                        <p className="font-medium text-foreground">{formData?.referenceNo || '-'}</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+
+                {!isMathMaryada && (
+                  <section className="rounded-lg border border-border p-4">
+                    <h4 className="text-sm font-semibold text-foreground mb-3">Vantiga Directory Opt-in</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Show Amount</p>
+                        <p className="font-medium text-foreground">{formData?.optShowAmountInDirectory}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Show Mobile</p>
+                        <p className="font-medium text-foreground">{formData?.optShowMobileInDirectory}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Show Email</p>
+                        <p className="font-medium text-foreground">{formData?.optShowEmailInDirectory}</p>
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePreviewClose}
+                  disabled={isSubmitting}
+                >
+                  Back to Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleConfirmSubmit}
+                  disabled={isSubmitting}
+                  iconName={isSubmitting ? undefined : 'Check'}
+                  iconPosition="left"
+                  className="bg-[#F97316] text-white"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin " />
+                      Submitting...
+                    </div>
+                  ) : (
+                    'Confirm & Submit'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
