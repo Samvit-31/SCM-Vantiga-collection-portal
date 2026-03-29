@@ -68,3 +68,9 @@ export const amountToWordsIndian = (value) => {
   if (rupees === 0) return `${integerToWordsIndian(paise)} Paise`;
   return `${integerToWordsIndian(rupees)} and ${integerToWordsIndian(paise)} Paise`;
 };
+
+export const formatAmountInWordsINR = (value) => {
+  const amount = toAmountNumber(value);
+  if (!(amount > 0)) return '';
+  return `Rupees ${amountToWordsIndian(amount)} Only`;
+};

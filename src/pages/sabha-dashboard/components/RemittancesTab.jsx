@@ -12,7 +12,7 @@ import Select from "../../../components/ui/Select";
 import Button from "../../../components/ui/Button";
 import Icon from "../../../components/AppIcon";
 import { supabase } from "../../../supabaseClient";
-import { formatCurrencyINR } from "../../../utils/amount";
+import { formatCurrencyINR, formatAmountInWordsINR } from "../../../utils/amount";
 import { getRemittanceStatusBadge } from "../../../utils/remittanceStatus.jsx";
 
 const REMITTANCE_MODES = [
@@ -274,6 +274,11 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
     };
   }, [remittances, totalCollectedAck]);
 
+  const remittedAmountNumber = Number(formData?.remittedAmount || 0);
+  const remittedAmountInWords = remittedAmountNumber > 0
+    ? formatAmountInWordsINR(remittedAmountNumber)
+    : "";
+
   const handleFieldChange = (field, value) => {
     if (field === "remittedAmount") {
       const nextAmount = String(value ?? "");
@@ -517,21 +522,28 @@ const RemittancesTab = forwardRef(({ selectedFY, userProfile }, ref) => {
               required
               disabled={isSubmitting}
             />
-            <Input
-              type="number"
-              label="Amount"
-              placeholder="Enter amount"
-              value={formData.remittedAmount}
-              onChange={(e) => handleFieldChange("remittedAmount", e?.target?.value)}
-              onBlur={() => handleFieldBlur("remittedAmount")}
-              step="0.01"
-              min="0"
-              hideNumberSpinners
-              disableWheelNumberChange
-              error={touchedFields?.remittedAmount ? fieldErrors.remittedAmount : ""}
-              required
-              disabled={isSubmitting}
-            />
+            <div>
+              <Input
+                type="number"
+                label="Amount"
+                placeholder="Enter amount"
+                value={formData.remittedAmount}
+                onChange={(e) => handleFieldChange("remittedAmount", e?.target?.value)}
+                onBlur={() => handleFieldBlur("remittedAmount")}
+                step="0.01"
+                min="0"
+                hideNumberSpinners
+                disableWheelNumberChange
+                error={touchedFields?.remittedAmount ? fieldErrors.remittedAmount : ""}
+                required
+                disabled={isSubmitting}
+              />
+              {remittedAmountInWords && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  In words: {remittedAmountInWords}
+                </p>
+              )}
+            </div>
             <Select
               label="Mode"
               value={formData.remittanceMode}

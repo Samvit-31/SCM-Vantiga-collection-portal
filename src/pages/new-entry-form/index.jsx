@@ -12,6 +12,7 @@ import {
   isValidFinancialYear
 } from '../../utils/financialYear';
 import { formatReceiptNumber } from '../../utils/receiptNumber';
+import { formatAmountInWordsINR } from '../../utils/amount';
 
 // ✅ ADD: Supabase client
 import { supabase } from "../../supabaseClient";
@@ -860,6 +861,8 @@ const NewEntryForm = () => {
 
   const previewMembers = isMathMaryada ? members?.slice(0, 1) : members;
   const previewTotalAmount = calculateTotalAmount();
+  const totalAmount = calculateTotalAmount();
+  const totalAmountInWords = totalAmount > 0 ? formatAmountInWordsINR(totalAmount) : '';
 
   if (loading) {
     return (
@@ -1165,9 +1168,14 @@ const NewEntryForm = () => {
                   Total Amount:
                 </span>
                 <span className="text-2xl font-bold">
-                  ₹{calculateTotalAmount()?.toFixed(2)}
+                  ₹{totalAmount?.toFixed(2)}
                 </span>
               </div>
+              {totalAmountInWords && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  In words: {totalAmountInWords}
+                </p>
+              )}
             </div>
           </div>
 
