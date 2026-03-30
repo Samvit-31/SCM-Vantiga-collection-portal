@@ -129,7 +129,7 @@ begin
         new.id,
         'RECEIPT_ASSIGNED',
         coalesce(new.edit_count, 0),
-        null,
+        new.status,
         new.status,
         null,
         new.receipt_no,
@@ -387,7 +387,8 @@ begin
   v_next_receipt_no := null;
 
   if coalesce(v_entry.receipt_base_no, '') <> '' then
-    v_next_receipt_no := v_entry.receipt_base_no || '-' || v_next_edit_count::text;
+    -- Keep base receipt visible at resubmission; suffix is finalized at treasurer acknowledgement.
+    v_next_receipt_no := v_entry.receipt_base_no;
   elsif p_paid_by = 'Cash' then
     select coalesce(s.receipt_code, s.code, 'SABHA')
     into v_receipt_code

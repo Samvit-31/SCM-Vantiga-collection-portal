@@ -676,7 +676,19 @@ const EntriesList = forwardRef(({
 
     setIsProcessing(true);
     try {
-      const receiptNo = selectedEntry?.receiptNo || generateReceiptNumber(selectedEntry?.fy);
+      const editCount = Number(selectedEntry?.editCount || 0);
+      const hasReceiptBase = Boolean(selectedEntry?.receiptBaseNo);
+      const currentReceipt = selectedEntry?.receiptNo || "";
+
+      let receiptNo = currentReceipt || generateReceiptNumber(selectedEntry?.fy);
+
+      // For edited rejected entries with prior base receipt, finalize suffix at acknowledgement.
+      if (hasReceiptBase && editCount > 0) {
+        const expectedBase = selectedEntry.receiptBaseNo;
+        if (!currentReceipt || currentReceipt === expectedBase) {
+          receiptNo = `${expectedBase}-${editCount}`;
+        }
+      }
       const acknowledgedDate = new Date().toISOString();
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
