@@ -514,7 +514,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
             <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
               Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
-              <span className="font-semibold">for the purpose of {isMathMaryada ? 'Math Maryada' : 'Vantiga'} for Year:</span>{' '}
+              <span className="font-semibold">, being voluntary contribution towards {isMathMaryada ? 'Math Maryada' : 'Vantiga'} for Year:</span>{' '}
               <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
             </div>
 
