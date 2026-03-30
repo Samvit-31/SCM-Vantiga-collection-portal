@@ -479,13 +479,14 @@ const ReceiptPreview = ({ standalone = false }) => {
           <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
             <div className="px-6 pt-4 pb-3 border-b border-slate-300">
               <div className="flex items-start justify-between gap-3">
-                <img src={logoUrl} alt="SCM Receipt" className="w-16 h-16 rounded-full mt-1" />
+                <img src={logoUrl} alt="SCM Receipt" className="w-18 h-18 rounded-full mt-1" />
                 <div className="text-center flex-1">
                   <div className="text-xl leading-tight font-bold uppercase tracking-wide">
-                    Shri Chitrapur Math
-                    <sup className="ml-1 text-xs align-top">®</sup>
+                    SHRĪ CHITRĀPUR MAT̲H̲ – Shiralī
+                    <sup className="ml-1 text-s align-top">®</sup>
                   </div>
                   <div className="text-base leading-tight font-semibold mt-1">
+                    Srimat Swami Pandurangashram Marg
                     Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354
                   </div>
                   <div className="text-sm leading-tight font-semibold mt-1">
