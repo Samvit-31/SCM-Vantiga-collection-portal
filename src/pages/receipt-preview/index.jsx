@@ -483,6 +483,7 @@ const ReceiptPreview = ({ standalone = false }) => {
                 <div className="text-center flex-1">
                   <div className="text-xl leading-tight font-bold uppercase tracking-wide">
                     Shri Chitrapur Math
+                    <sup className="ml-1 text-xs align-top">®</sup>
                   </div>
                   <div className="text-base leading-tight font-semibold mt-1">
                     Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354
