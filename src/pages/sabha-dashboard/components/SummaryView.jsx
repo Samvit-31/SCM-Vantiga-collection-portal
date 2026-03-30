@@ -575,7 +575,7 @@ const SummaryView = forwardRef(({
                 <>
                   <p className="text-2xl font-bold text-card-foreground">{kpi.families}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Families: {kpi.families} | Members: {kpi.members}
+                    Members: {kpi.members}
                   </p>
                 </>
               )}
