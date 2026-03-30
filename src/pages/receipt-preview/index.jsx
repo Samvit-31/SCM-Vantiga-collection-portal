@@ -479,7 +479,7 @@ const ReceiptPreview = ({ standalone = false }) => {
           <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
             <div className="px-6 pt-4 pb-3 border-b border-slate-300">
               <div className="flex items-start justify-between gap-3">
-                <img src={logoUrl} alt="SCM Receipt" className="w-14 h-14 rounded-full mt-1" />
+                <img src={logoUrl} alt="SCM Receipt" className="w-16 h-16 rounded-full mt-1" />
                 <div className="text-center flex-1">
                   <div className="text-xl leading-tight font-bold uppercase tracking-wide">
                     Shri Chitrapur Math
@@ -572,7 +572,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               )}
               <div className="mt-1.5 text-base font-semibold">
                 AMOUNT IN WORDS: <span className="font-medium"> Rupees</span>
-                <span className="italic font-medium">{amountInWords}</span>
+                <span className="font-medium">{amountInWords}</span>
                 <span className="font-medium"> Only</span>
               </div>
             </div>
