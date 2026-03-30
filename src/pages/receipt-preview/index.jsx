@@ -479,7 +479,7 @@ const ReceiptPreview = ({ standalone = false }) => {
           <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
             <div className="px-6 pt-4 pb-3 border-b border-slate-300">
               <div className="flex items-start justify-between gap-3">
-                <img src={logoUrl} alt="SCM Receipt" className="w-18 h-18 rounded-full mt-1" />
+                <img src={logoUrl} alt="SCM Receipt" className="w-16 h-16 rounded-full mt-1" />
                 <div className="text-center flex-1">
                   <div className="text-xl leading-tight font-bold uppercase tracking-wide">
                     SHRĪ CHITRĀPUR MAT̲H̲ – Shiralī
