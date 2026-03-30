@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
@@ -58,6 +58,8 @@ export async function getUserSabhaContextOrThrow() {
 const NewEntryForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isRejectedEditMode = Boolean(location?.state?.isRejectedEdit && location?.state?.entryId);
+  const rejectedEditEntryId = location?.state?.entryId || null;
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -100,6 +102,7 @@ const NewEntryForm = () => {
   // Duplicate warnings
   const [duplicateWarnings, setDuplicateWarnings] = useState([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [editMeta, setEditMeta] = useState(null);
 
   // ---------
   // IMPORTANT ASSUMPTIONS ABOUT YOUR DATABASE (based on your existing fetchEntriesForSabhaFY):
@@ -124,8 +127,8 @@ const NewEntryForm = () => {
       const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
 
       // Check role-based access
-      if (profile?.role === 'treasurer') {
-        toast?.error('Access denied. Only Pratinidhi can create new entries.');
+      if (profile?.role === 'treasurer' && !isRejectedEditMode) {
+        toast?.error('Access denied. Treasurer can edit rejected entries only.');
         setTimeout(() => {
           navigate('/sabha-dashboard', { replace: true });
         }, 2000);
@@ -161,6 +164,14 @@ const NewEntryForm = () => {
 
       if (!isMounted) return;
 
+      if (nextProfile?.role === 'treasurer' && !isRejectedEditMode) {
+        toast?.error('Access denied. Treasurer can edit rejected entries only.');
+        setTimeout(() => {
+          navigate('/sabha-dashboard', { replace: true });
+        }, 1200);
+        return;
+      }
+
       setUserProfile(nextProfile);
 
       // Set default sabha name from user profile (UI-only)
@@ -176,7 +187,7 @@ const NewEntryForm = () => {
     return () => {
       isMounted = false;
     };
-  }, [navigate]);
+  }, [navigate, isRejectedEditMode]);
 
   useEffect(() => {
     const prefillFY = location?.state?.prefillFY;
@@ -189,6 +200,153 @@ const NewEntryForm = () => {
       setEntryFY(fyOptions[fyOptions.length - 1].value);
     }
   }, [location?.state?.prefillFY, fyOptions]);
+
+  const loadRejectedEntryForEdit = useCallback(async () => {
+    if (!isRejectedEditMode || !rejectedEditEntryId || !userProfile?.sabhaId) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const currentUserId = sessionData?.session?.user?.id || null;
+    if (!currentUserId) {
+      throw new Error('No active session. Please login again.');
+    }
+
+    const { data, error } = await supabase
+      .from('vantiga_entries')
+      .select(`
+        id,
+        sabha_id,
+        family_id,
+        fy,
+        entry_type,
+        status,
+        paid_by,
+        reference_no,
+        receipt_base_no,
+        edit_count,
+        submitted_by,
+        families:family_id (
+          address_multiline,
+          payer_mobile,
+          payer_email,
+          opt_show_amount_in_directory,
+          opt_show_mobile_in_directory,
+          opt_show_email_in_directory,
+          family_members (
+            id,
+            full_name,
+            age,
+            gender,
+            gotra,
+            amount,
+            is_primary_payer
+          )
+        )
+      `)
+      .eq('id', rejectedEditEntryId)
+      .single();
+
+    if (error || !data) {
+      throw new Error('Unable to load rejected entry for editing.');
+    }
+
+    if (data?.sabha_id !== userProfile?.sabhaId) {
+      throw new Error('This entry does not belong to your Sabha.');
+    }
+
+    if (data?.status !== 'REJECTED') {
+      throw new Error('Only rejected entries can be edited.');
+    }
+
+    const edits = Number(data?.edit_count || 0);
+    if (edits >= 2) {
+      throw new Error('Maximum edit limit reached for this entry.');
+    }
+
+    if (userProfile?.role === 'pratinidhi' && data?.submitted_by !== currentUserId) {
+      throw new Error('You can only edit rejected entries submitted by you.');
+    }
+
+    const family = data?.families || {};
+    const sortedMembers = [...(family?.family_members || [])].sort((a, b) => {
+      if (a?.is_primary_payer && !b?.is_primary_payer) return -1;
+      if (!a?.is_primary_payer && b?.is_primary_payer) return 1;
+      return 0;
+    });
+
+    const mappedMembers = sortedMembers.map((member, index) => {
+      const parts = String(member?.full_name || '').trim().split(/\s+/);
+      const firstName = parts.shift() || '';
+      const lastName = parts.join(' ');
+
+      return {
+        id: index + 1,
+        firstName,
+        lastName,
+        age: member?.age != null ? String(member.age) : '',
+        gender: member?.gender || 'Male',
+        gotra: member?.gotra || '',
+        amount: member?.amount != null ? String(Number(member.amount)) : '',
+        relationship: index === 0 ? 'Member' : 'Family Member'
+      };
+    });
+
+    setEntryFY(data?.fy || getCurrentFinancialYear());
+    setFormData((prev) => ({
+      ...prev,
+      entryType: data?.entry_type || 'Vantiga',
+      sabha: userProfile?.sabha || prev?.sabha || '',
+      address: family?.address_multiline || '',
+      payerMobile: family?.payer_mobile || '',
+      payerEmail: family?.payer_email || '',
+      optShowAmountInDirectory: family?.opt_show_amount_in_directory ? 'Yes' : 'No',
+      optShowMobileInDirectory: family?.opt_show_mobile_in_directory ? 'Yes' : 'No',
+      optShowEmailInDirectory: family?.opt_show_email_in_directory ? 'Yes' : 'No',
+      paidBy: data?.paid_by || 'Cash',
+      referenceNo: data?.reference_no || '',
+    }));
+    setMembers(
+      mappedMembers.length
+        ? mappedMembers
+        : [{
+            id: 1,
+            firstName: '',
+            lastName: '',
+            age: '',
+            gender: 'Male',
+            gotra: '',
+            amount: '',
+            relationship: 'Member'
+          }]
+    );
+    setEditMeta({
+      entryId: data.id,
+      editCount: edits,
+      receiptBaseNo: data?.receipt_base_no || null,
+    });
+  }, [isRejectedEditMode, rejectedEditEntryId, userProfile?.sabhaId, userProfile?.sabha, userProfile?.role]);
+
+  useEffect(() => {
+    if (!isRejectedEditMode || !userProfile?.sabhaId) return;
+    let mounted = true;
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        await loadRejectedEntryForEdit();
+      } catch (error) {
+        if (!mounted) return;
+        toast?.error(error?.message || 'Unable to open rejected entry for edit.');
+        navigate('/sabha-dashboard', { replace: true });
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, [isRejectedEditMode, userProfile?.sabhaId, loadRejectedEntryForEdit, navigate]);
 
   const isMathMaryada = formData?.entryType === 'Math Maryada';
 
@@ -280,7 +438,7 @@ const NewEntryForm = () => {
       fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
       // Fetch recent entries in the same sabha+FY (limit to last ~14 days for efficiency)
-      const { data, error } = await supabase
+      let query = supabase
         .from("vantiga_entries")
         .select(`
           id, fy, entry_type, status, paid_by, reference_no, submitted_at,
@@ -292,7 +450,13 @@ const NewEntryForm = () => {
         .eq("sabha_id", userProfile?.sabhaId)
         .eq("fy", entryFY)
         .eq("entry_type", formData?.entryType)
-        .gte("submitted_at", fourteenDaysAgo.toISOString())
+        .gte("submitted_at", fourteenDaysAgo.toISOString());
+
+      if (isRejectedEditMode && rejectedEditEntryId) {
+        query = query.neq("id", rejectedEditEntryId);
+      }
+
+      const { data, error } = await query
         .order("submitted_at", { ascending: false })
         .limit(50);
 
@@ -757,6 +921,48 @@ const NewEntryForm = () => {
         return;
       }
 
+      if (isRejectedEditMode && rejectedEditEntryId) {
+        const membersToUpsert = (isMathMaryada ? members.slice(0, 1) : members).map((m, idx) => ({
+          full_name: `${m?.firstName || ''} ${m?.lastName || ''}`.trim(),
+          age: parseInt(m?.age, 10),
+          gender: m?.gender,
+          gotra: isMathMaryada ? null : (m?.gotra || null),
+          amount: Number(m?.amount),
+          is_primary_payer: idx === 0,
+        }));
+
+        const { data: editRows, error: editErr } = await supabase.rpc('edit_rejected_vantiga_entry', {
+          p_entry_id: rejectedEditEntryId,
+          p_fy: entryFY,
+          p_entry_type: formData?.entryType,
+          p_paid_by: formData?.paidBy,
+          p_reference_no: formData?.paidBy === 'Cash' ? null : (formData?.referenceNo || null),
+          p_address_multiline: formData?.address,
+          p_payer_mobile: formData?.payerMobile,
+          p_payer_email: formData?.payerEmail,
+          p_opt_show_amount_in_directory: !isMathMaryada && formData?.optShowAmountInDirectory === 'Yes',
+          p_opt_show_mobile_in_directory: !isMathMaryada && formData?.optShowMobileInDirectory === 'Yes',
+          p_opt_show_email_in_directory: !isMathMaryada && formData?.optShowEmailInDirectory === 'Yes',
+          p_members: membersToUpsert,
+        });
+
+        if (editErr) throw editErr;
+
+        const updated = Array.isArray(editRows) ? editRows?.[0] : editRows;
+        setEditMeta((prev) => ({
+          ...(prev || {}),
+          editCount: Number(updated?.edit_count || prev?.editCount || 0),
+        }));
+
+        toast?.success('Rejected entry edited and submitted successfully');
+        setIsPreviewOpen(false);
+
+        setTimeout(() => {
+          navigate('/sabha-dashboard', { state: { activeTab: 'entries' } });
+        }, 1200);
+        return;
+      }
+
       // 1) Insert FAMILY
       // Map your UI fields -> DB column names
       const familyInsert = {
@@ -875,7 +1081,7 @@ const NewEntryForm = () => {
     );
   }
 
-  if (userProfile?.role === 'treasurer') {
+  if (userProfile?.role === 'treasurer' && !isRejectedEditMode) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Toaster position="top-right" />
@@ -925,7 +1131,7 @@ const NewEntryForm = () => {
             </button>
           </div>
           <h2 className="text-3xl font-bold text-card-foreground">
-            New Entry
+            {isRejectedEditMode ? 'Edit Rejected Entry' : 'New Entry'}
           </h2>
         </div>
       </div>
@@ -933,6 +1139,14 @@ const NewEntryForm = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <form onSubmit={handlePreviewOpen} className="max-w-4xl mx-auto space-y-8">
+          {isRejectedEditMode && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">Rejected Entry Edit Mode</p>
+              <p className="mt-1">
+                This entry has used {Number(editMeta?.editCount || 0)}/2 edit attempts.
+              </p>
+            </div>
+          )}
           <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-card-foreground mb-4 flex items-center gap-2">
               <Icon name="Calendar" size={20} />
@@ -1316,7 +1530,7 @@ const NewEntryForm = () => {
                   Submitting...
                 </div>
               ) : (
-                'Submit Entry'
+                isRejectedEditMode ? 'Submit Edited Entry' : 'Submit Entry'
               )}
             </Button>
           </div>
@@ -1481,7 +1695,7 @@ const NewEntryForm = () => {
                       Submitting...
                     </div>
                   ) : (
-                    'Confirm & Submit'
+                    isRejectedEditMode ? 'Confirm & Submit Edit' : 'Confirm & Submit'
                   )}
                 </Button>
               </div>

@@ -69,6 +69,8 @@ const EntriesList = forwardRef(({
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [selectedRejectReason, setSelectedRejectReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [auditTrail, setAuditTrail] = useState([]);
+  const [loadingAuditTrail, setLoadingAuditTrail] = useState(false);
 
   const effectiveUserId = useMemo(() => {
     if (currentUserId) return currentUserId;
@@ -134,6 +136,8 @@ const EntriesList = forwardRef(({
         paidBy: r.paid_by,
         referenceNo: r.reference_no || "",
         receiptNo: r.receipt_no || "",
+        receiptBaseNo: r.receipt_base_no || "",
+        editCount: Number(r.edit_count || 0),
         acknowledgedDate: r.acknowledged_at || "",
         rejectionReason: r.rejection_reason || null,
 
@@ -409,8 +413,77 @@ const EntriesList = forwardRef(({
 
   const closeDrawer = () => {
     setIsDrawerOpen(false);
+    setAuditTrail([]);
     setTimeout(() => setSelectedEntry(null), 300);
   };
+
+  const loadAuditTrail = useCallback(async (entryId) => {
+    if (!entryId) {
+      setAuditTrail([]);
+      return;
+    }
+
+    setLoadingAuditTrail(true);
+    try {
+      const { data: rows, error } = await supabase
+        .from("vantiga_entry_audit")
+        .select(`
+          id,
+          event_type,
+          edit_iteration,
+          old_status,
+          new_status,
+          old_receipt_no,
+          new_receipt_no,
+          actor_user_id,
+          actor_role,
+          reason,
+          created_at
+        `)
+        .eq("entry_id", entryId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const actorIds = Array.from(new Set((rows || []).map((row) => row?.actor_user_id).filter(Boolean)));
+      let actorNameById = new Map();
+
+      if (actorIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", actorIds);
+
+        actorNameById = new Map((profileRows || []).map((profile) => [profile.user_id, profile.full_name]));
+      }
+
+      const mapped = (rows || []).map((row) => ({
+        id: row.id,
+        eventType: row.event_type,
+        editIteration: Number(row.edit_iteration || 0),
+        oldStatus: row.old_status,
+        newStatus: row.new_status,
+        oldReceiptNo: row.old_receipt_no || "",
+        newReceiptNo: row.new_receipt_no || "",
+        actorRole: row.actor_role || "-",
+        actorName: actorNameById.get(row.actor_user_id) || row.actor_user_id || "-",
+        reason: row.reason || "",
+        createdAt: row.created_at,
+      }));
+
+      setAuditTrail(mapped);
+    } catch (error) {
+      console.error("Failed to load audit trail", error);
+      setAuditTrail([]);
+    } finally {
+      setLoadingAuditTrail(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDrawerOpen || !selectedEntry?.entryId) return;
+    loadAuditTrail(selectedEntry.entryId);
+  }, [isDrawerOpen, selectedEntry?.entryId, loadAuditTrail]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "-";
@@ -603,10 +676,7 @@ const EntriesList = forwardRef(({
 
     setIsProcessing(true);
     try {
-      const isCashEntry = selectedEntry?.paidBy === "Cash";
-      const receiptNo = isCashEntry && selectedEntry?.receiptNo
-        ? selectedEntry.receiptNo
-        : generateReceiptNumber(selectedEntry?.fy);
+      const receiptNo = selectedEntry?.receiptNo || generateReceiptNumber(selectedEntry?.fy);
       const acknowledgedDate = new Date().toISOString();
 
       const { data: userData, error: userErr } = await supabase.auth.getUser();
@@ -642,6 +712,7 @@ const EntriesList = forwardRef(({
             }
           : prev
       );
+      await loadAuditTrail(selectedEntry.entryId);
     } catch (e) {
       console.error(e);
       alert(`Failed to acknowledge: ${e.message || e}`);
@@ -685,6 +756,7 @@ const EntriesList = forwardRef(({
           acknowledged_by: treasurerUserId,
           acknowledged_at: new Date().toISOString(),
           receipt_no: null,
+          receipt_base_no: selectedEntry?.receiptBaseNo || selectedEntry?.receiptNo || null,
         })
         .eq("id", selectedEntry.entryId);
 
@@ -699,10 +771,12 @@ const EntriesList = forwardRef(({
               status: "REJECTED",
               rejectionReason: reason,
               receiptNo: "",
+              receiptBaseNo: prev?.receiptBaseNo || prev?.receiptNo || "",
               acknowledgedDate: "",
             }
           : prev
       );
+      await loadAuditTrail(selectedEntry.entryId);
 
       closeRejectModal();
     } catch (e) {
@@ -718,6 +792,20 @@ const EntriesList = forwardRef(({
     navigate("/receipt-preview");
   };
 
+  const handleEditRejectedEntry = () => {
+    if (!selectedEntry?.entryId) return;
+    navigate("/new-entry-form", {
+      state: {
+        prefillFY: selectedEntry?.fy,
+        isRejectedEdit: true,
+        entryId: selectedEntry.entryId,
+      },
+    });
+  };
+
+  const canEditRejectedEntry = selectedEntry?.status === "REJECTED" && Number(selectedEntry?.editCount || 0) < 2;
+  const hasReachedEditLimit = selectedEntry?.status === "REJECTED" && Number(selectedEntry?.editCount || 0) >= 2;
+
   const isChequeBounceSelected = selectedRejectReason === "Cheque bounced.";
   const isChequePayment = selectedEntry?.paidBy === "Cheque";
   const isChequeBounceInvalid = isChequeBounceSelected && !isChequePayment;
@@ -728,6 +816,19 @@ const EntriesList = forwardRef(({
       Receipt email is sent automatically once the receipt number is generated.
     </p>
   );
+
+  const getAuditEventLabel = (eventType) => {
+    switch (eventType) {
+      case "REJECTED":
+        return "Rejected";
+      case "EDIT_SUBMITTED":
+        return "Edited & Re-submitted";
+      case "RECEIPT_ASSIGNED":
+        return "Receipt Assigned";
+      default:
+        return eventType || "Update";
+    }
+  };
 
   const renderActions = () => {
     if (!selectedEntry) return null;
@@ -756,6 +857,32 @@ const EntriesList = forwardRef(({
               Download Receipt
             </Button>
             <AutoEmailNote />
+          </div>
+        );
+      }
+
+      if (canEditRejectedEntry) {
+        return (
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleEditRejectedEntry}
+              variant="outline"
+              fullWidth
+              iconName="Pencil"
+            >
+              Edit Rejected Entry
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Edit attempt {Number(selectedEntry?.editCount || 0)}/2
+            </p>
+          </div>
+        );
+      }
+
+      if (hasReachedEditLimit) {
+        return (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Max edit limit reached (2/2). Please contact Treasurer for support.
           </div>
         );
       }
@@ -809,6 +936,32 @@ const EntriesList = forwardRef(({
               Download Receipt
             </Button>
             <AutoEmailNote />
+          </div>
+        );
+      }
+
+      if (canEditRejectedEntry) {
+        return (
+          <div className="flex flex-col gap-2">
+            <Button
+              onClick={handleEditRejectedEntry}
+              variant="outline"
+              fullWidth
+              iconName="Pencil"
+            >
+              Edit Rejected Entry
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Edit attempt {Number(selectedEntry?.editCount || 0)}/2
+            </p>
+          </div>
+        );
+      }
+
+      if (hasReachedEditLimit) {
+        return (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Max edit limit reached (2/2). No further edits are allowed.
           </div>
         );
       }
@@ -1054,6 +1207,14 @@ const EntriesList = forwardRef(({
                         {selectedEntry?.rejectionReason}
                       </div>
                     )}
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Edit Attempts
+                      </label>
+                      <p className="mt-1 text-sm font-semibold text-foreground">
+                        {Number(selectedEntry?.editCount || 0)}/2
+                      </p>
+                    </div>
 
                   <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -1212,6 +1373,49 @@ const EntriesList = forwardRef(({
                 <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Actions</h3>
                 {renderActions()}
               </div>
+
+              {(userRole === "pratinidhi" || userRole === "treasurer") && (
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">Audit Trail</h3>
+                  {loadingAuditTrail ? (
+                    <p className="text-sm text-muted-foreground">Loading audit trail...</p>
+                  ) : auditTrail.length > 0 ? (
+                    <div className="space-y-2">
+                      {auditTrail.map((audit) => (
+                        <div key={audit.id} className="rounded-md border border-border p-3 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-semibold text-foreground">{getAuditEventLabel(audit.eventType)}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(audit.createdAt)}</p>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            By {audit.actorName} ({audit.actorRole || "-"})
+                          </p>
+                          {(audit.oldStatus || audit.newStatus) && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Status: {audit.oldStatus || "-"} to {audit.newStatus || "-"}
+                            </p>
+                          )}
+                          {(audit.oldReceiptNo || audit.newReceiptNo) && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Receipt: {audit.oldReceiptNo || "-"} to {audit.newReceiptNo || "-"}
+                            </p>
+                          )}
+                          {audit.reason && (
+                            <p className="mt-1 text-xs text-foreground">
+                              Reason: {audit.reason}
+                            </p>
+                          )}
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Edit iteration: {Number(audit.editIteration || 0)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No audit records available yet.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </>
