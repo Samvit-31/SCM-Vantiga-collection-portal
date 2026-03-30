@@ -610,11 +610,11 @@ const ReceiptPreview = ({ standalone = false }) => {
             <div className="border-t border-slate-300 px-6 py-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <div className="font-semibold">Pratinidhi Name:</div>
+                  <div className="font-semibold">Pratinidhi:</div>
                   <div className="mt-1">{pratinidhiName}</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold">Treasurer Name:</div>
+                  <div className="font-semibold">Treasurer:</div>
                   <div className="mt-1">{treasurerName}</div>
                 </div>
               </div>
