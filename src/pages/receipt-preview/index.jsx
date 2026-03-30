@@ -106,7 +106,7 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
 
 const ReceiptPreview = ({ standalone = false }) => {
   const navigate = useNavigate();
-  const logoUrl = new URL('../../../cropped-Math-Logo-Round.png', import.meta.url).href;
+  const receiptHeaderUrl = new URL('../../../Screenshot 2026-03-30 182157.png', import.meta.url).href;
   const [entry, setEntry] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -477,25 +477,12 @@ const ReceiptPreview = ({ standalone = false }) => {
         {/* Receipt */}
         <div className="container mx-auto px-4 py-8 print:py-0">
           <div ref={receiptSheetRef} className="receipt-sheet w-full max-w-full mx-auto bg-white border border-gray-300 shadow-sm print:shadow-none text-sm">
-            <div className="px-6 pt-4 pb-3 border-b border-slate-300">
-              <div className="flex items-start justify-between gap-3">
-                <img src={logoUrl} alt="SCM Receipt" className="w-16 h-16 rounded-full mt-1" />
-                <div className="text-center flex-1">
-                  <div className="text-xl leading-tight font-bold uppercase tracking-wide">
-                    SHRĪ CHITRĀPUR MAT̲H̲ – Shiralī
-                    <sup className="ml-1 text-s align-top">®</sup>
-                  </div>
-                  <div className="text-base leading-tight font-semibold mt-1">
-                    Srimat Swami Pandurangashram Marg
-                    Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354
-                  </div>
-                  <div className="text-sm leading-tight font-semibold mt-1">
-                    Email:accts.shirali@chitrapurmath.in
-                    <span className="inline-block ml-6">GSTN:29AAATS5030Q1Z0</span>
-                  </div>
-                </div>
-                <div className="w-14" />
-              </div>
+            <div className="px-4 pt-3 pb-2 border-b border-slate-300">
+              <img
+                src={receiptHeaderUrl}
+                alt="Shri Chitrapur Math receipt header"
+                className="w-full h-auto"
+              />
             </div>
 
             <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between">
