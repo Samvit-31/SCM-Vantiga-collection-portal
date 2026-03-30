@@ -602,7 +602,7 @@ const ReceiptPreview = ({ standalone = false }) => {
                   </div>
                 </div>
                 <div className="inline-block text-sm font-semibold bg-yellow-200 px-2 py-1 rounded">
-                  Consent Statement comes here. To be vetted/provided by legal team
+                  Vantiga Payer has opted above information to be shown in Vantiga Directory with Yes or No
                 </div>
               </div>
             )}

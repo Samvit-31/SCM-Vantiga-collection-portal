@@ -64,7 +64,7 @@ const NewEntryForm = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const MAX_ADDITIONAL_MEMBERS = 2;
+  const MAX_ADDITIONAL_MEMBERS = 3;
   const fyOptions = useMemo(() => getFinancialYearOptions(), []);
   const [entryFY, setEntryFY] = useState(getCurrentFinancialYear());
 
@@ -1278,7 +1278,7 @@ const NewEntryForm = () => {
             </div>
             {!isMathMaryada && Math.max(members?.length - 1, 0) >= MAX_ADDITIONAL_MEMBERS && (
               <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                You’ve reached the maximum limit of 3 members (Self + 2).
+                You’ve reached the maximum limit of 4 members (Primary payer + 3).
               </div>
             )}
 
