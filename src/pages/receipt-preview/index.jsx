@@ -508,7 +508,7 @@ const ReceiptPreview = ({ standalone = false }) => {
             <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between">
               <div>
                 <div className="text-lg font-bold">Vantiga Receipt</div>
-                <div className="text-sm font-semibold mt-0.5">{collectingSabha}</div>
+                <div className="text-sm font-semibold mt-0.5">Local Sabha: {collectingSabha}</div>
               </div>
               <div className="text-sm leading-tight text-right font-semibold">
                 <div>

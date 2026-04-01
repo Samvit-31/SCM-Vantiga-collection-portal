@@ -692,7 +692,7 @@ const NewEntryForm = () => {
     }
 
     if (field === 'otherGotra' && member?.gotra === 'Others' && !normalizedValue) {
-      return 'Custom gotra is required';
+      return 'Kindly specify Gotra';
     }
 
     if (field === 'amount') {
@@ -1419,7 +1419,7 @@ const NewEntryForm = () => {
                     )}
                     {member?.gotra === 'Others' && (
                       <Input
-                        label="Custom Gotra"
+                        label="If 'Others' Gotra then:"
                         value={member?.otherGotra}
                         onChange={(e) => handleMemberChange(index, 'otherGotra', e?.target?.value)}
                         placeholder="Enter gotra"
