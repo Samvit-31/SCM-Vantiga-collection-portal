@@ -612,20 +612,12 @@ const NewEntryForm = () => {
     { value: 'No', label: 'No' }
   ];
 
-  const entryTypeOptions = [
-    { value: 'Vantiga', label: 'Vantiga' }
-  ];
-
   const AGE_PATTERN = /^\d+$/;
   const AGE_INPUT_PATTERN = /^\d*$/;
   const AMOUNT_PATTERN = /^\d*\.?\d{0,2}$/;
 
   const validateTopLevelField = (name, value, nextFormData = formData) => {
     const normalizedValue = typeof value === 'string' ? value.trim() : value;
-
-    if (name === 'entryType' && !normalizedValue) {
-      return 'Entry type is required';
-    }
 
     if (name === 'sabha') {
       if (!normalizedValue) return 'Sabha is required';
@@ -848,7 +840,7 @@ const NewEntryForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const requiredTopFields = ['entryType', 'sabha', 'address', 'payerMobile', 'payerEmail', 'entryFY'];
+    const requiredTopFields = ['sabha', 'address', 'payerMobile', 'payerEmail', 'entryFY'];
 
     requiredTopFields.forEach((fieldName) => {
       const value = fieldName === 'entryFY' ? entryFY : formData?.[fieldName];
@@ -893,7 +885,6 @@ const NewEntryForm = () => {
     setTouchedFields((prev) => {
       const nextTouched = {
         ...prev,
-        entryType: true,
         sabha: true,
         address: true,
         payerMobile: true,
@@ -1207,16 +1198,6 @@ const NewEntryForm = () => {
             <p className="mt-2 text-xs text-muted-foreground">
               Entry FY determines where this submission is recorded.
             </p>
-            <div className="mt-4 max-w-sm">
-              <Select
-                label="Entry Type"
-                value={formData?.entryType}
-                onChange={(value) => handleSelectChange('entryType', value)}
-                options={entryTypeOptions}
-                required
-                error={touchedFields?.entryType ? errors?.entryType : ''}
-              />
-            </div>
           </div>
 
           {/* Duplicate Warning Panel */}
@@ -1626,14 +1607,10 @@ const NewEntryForm = () => {
               </div>
 
               <div className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="rounded-md border border-border bg-muted/30 p-4">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Entry FY</p>
                     <p className="mt-1 text-sm font-semibold text-foreground">{entryFY}</p>
-                  </div>
-                  <div className="rounded-md border border-border bg-muted/30 p-4">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Entry Type</p>
-                    <p className="mt-1 text-sm font-semibold text-foreground">{formData?.entryType}</p>
                   </div>
                 </div>
 
