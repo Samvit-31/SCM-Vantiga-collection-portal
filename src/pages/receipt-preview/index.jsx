@@ -501,6 +501,14 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
+            {!isMathMaryada && (
+              <div className="px-6 py-2 border-b border-slate-300 text-center">
+                <div className="inline-block text-sm italic bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
+                  Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.
+                </div>
+              </div>
+            )}
+
 
             {isMathMaryada ? (
               <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">

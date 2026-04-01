@@ -883,6 +883,16 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   });
   drawRightText(`Date: ${receiptDate}`, right - horizontalPad, summary.top - 36, 10, true);
 
+  if (!isMathMaryada) {
+    const topCallout = row(30);
+    drawSectionBox(topCallout.top, topCallout.height);
+    drawHighlightedCenterCallout(
+      [{ text: "Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.", size: 8.8 }],
+      topCallout.top - 6,
+      { gap: 0, paddingX: 8, paddingY: 3 },
+    );
+  }
+
   const received = row(30);
   drawSectionBox(received.top, received.height);
   page.drawText("Received From:", {
