@@ -448,22 +448,22 @@ const SummaryView = forwardRef(({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {kpiData.map((kpi) => (
-            <div key={kpi.id} className="bg-card rounded-lg border border-border p-6 shadow-sm">
+            <div key={kpi.id} className="bg-card rounded-lg border border-border p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <div className={`p-2 ${kpi.bgColor} rounded-lg`}>
-                  <Icon name={kpi.icon} size={24} color={kpi.color} />
+                  <Icon name={kpi.icon} size={20} color={kpi.color} />
                 </div>
               </div>
 
-              <h3 className="text-sm font-medium text-muted-foreground mb-1">{kpi.title}</h3>
+              <h3 className="text-xs font-medium text-muted-foreground mb-1 leading-5">{kpi.title}</h3>
 
               {kpi.isCurrency ? (
-                <p className="text-2xl font-bold text-card-foreground">{kpi.value}</p>
+                <p className="text-xl font-bold text-card-foreground break-words">{kpi.value}</p>
               ) : (
                 <>
-                  <p className="text-2xl font-bold text-card-foreground">{kpi.families}</p>
+                  <p className="text-xl font-bold text-card-foreground">{kpi.families}</p>
                   <p className="text-xs text-muted-foreground mt-1">Members: {kpi.members}</p>
                 </>
               )}
