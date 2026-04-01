@@ -4,7 +4,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import Checkbox from '../../components/ui/Checkbox';
 import Icon from '../../components/AppIcon';
 import CommonHeader from '../../components/ui/CommonHeader';
 import {
@@ -610,6 +609,11 @@ const NewEntryForm = () => {
   const yesNoOptions = [
     { value: 'Yes', label: 'Yes' },
     { value: 'No', label: 'No' }
+  ];
+
+  const maritalStatusOptions = [
+    { value: 'Unmarried', label: 'Unmarried' },
+    { value: 'Married', label: 'Married' }
   ];
 
   const AGE_PATTERN = /^\d+$/;
@@ -1362,21 +1366,13 @@ const NewEntryForm = () => {
                       options={genderOptions}
                       required
                     />
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none text-foreground">
-                        Married
-                      </label>
-                      <div className="flex h-10 items-center gap-3 rounded-md border border-input bg-background px-3 py-2">
-                        <Checkbox
-                          id={`member-${index}-married`}
-                          checked={!!member?.isMarried}
-                          onCheckedChange={(checked) => handleMemberChange(index, 'isMarried', checked)}
-                        />
-                        <label htmlFor={`member-${index}-married`} className="cursor-pointer text-sm text-foreground">
-                          {member?.isMarried ? 'Married' : 'Unmarried'}
-                        </label>
-                      </div>
-                    </div>
+                    <Select
+                      label="Marital Status"
+                      value={member?.isMarried ? 'Married' : 'Unmarried'}
+                      onChange={(value) => handleMemberChange(index, 'isMarried', value === 'Married')}
+                      options={maritalStatusOptions}
+                      required
+                    />
                     {!isMathMaryada && (
                       <Select
                         label="Gotra"

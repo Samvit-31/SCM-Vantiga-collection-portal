@@ -22,6 +22,7 @@ interface SubmissionAckPayload {
   sabhaName: string;
   paidBy: string;
   fy: string;
+  totalAmount: number;
 }
 
 function requiredEnv(name: string): string {
@@ -45,6 +46,17 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function formatAmountIndian(value: number): string {
+  try {
+    return value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return value.toFixed(2);
+  }
 }
 
 export function createServiceClient() {
@@ -196,7 +208,8 @@ export async function fetchSubmissionAckPayload(
         payer_email,
         family_members (
           full_name,
-          is_primary_payer
+          is_primary_payer,
+          amount
         ),
         sabhas:sabha_id (
           name
@@ -226,6 +239,10 @@ export async function fetchSubmissionAckPayload(
     members.find((member: { full_name?: string | null; is_primary_payer?: boolean | null }) => member?.is_primary_payer)?.full_name?.trim() ||
     members[0]?.full_name?.trim() ||
     "Vantiga Member";
+  const totalAmount = members.reduce((sum, member: { amount?: number | string | null }) => {
+    const amount = Number(member?.amount || 0);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 
   return {
     entryId,
@@ -235,6 +252,7 @@ export async function fetchSubmissionAckPayload(
     sabhaName: optionalTrimmed(familySabha?.name) || "-",
     paidBy: optionalTrimmed(data?.paid_by) || dispatch.paid_by || "-",
     fy: optionalTrimmed(data?.fy) || "-",
+    totalAmount,
   };
 }
 
@@ -253,10 +271,11 @@ export async function sendViaResend(
         <strong>Payer Name:</strong> ${escapeHtml(payload.payerName)}<br/>
         <strong>Local Sabha:</strong> ${escapeHtml(payload.sabhaName)}<br/>
         <strong>Financial Year:</strong> ${escapeHtml(payload.fy)}<br/>
-        <strong>Payment Mode:</strong> ${escapeHtml(payload.paidBy)}
+        <strong>Payment Mode:</strong> ${escapeHtml(payload.paidBy)}<br/>
+        <strong>Amount:</strong> INR ${escapeHtml(formatAmountIndian(payload.totalAmount))}
       </p>
-      <p>We have received your submission and you will receive your receipt soon after verification.</p>
-      <p>If you have any questions, please contact your Sabha representative.</p>
+      <p>We have received your submission and you will receive your receipt soon after verification by the Local Sabha Treasurer.</p>
+      <p>If you have any questions, please contact your Sabha Pratinidhi.</p>
       <p>Regards,<br/>Shri Chitrapur Math</p>
     </div>
   `;

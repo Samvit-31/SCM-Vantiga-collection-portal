@@ -897,7 +897,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     const topCallout = row(30);
     drawSectionBox(topCallout.top, topCallout.height);
     drawHighlightedCenterCallout(
-      [{ text: "Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.", size: 8.8 }],
+      [{ text: "Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.", size: 8.8, bold: true }],
       topCallout.top - 6,
       { gap: 0, paddingX: 8, paddingY: 3 },
     );
@@ -1083,7 +1083,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
       [
         {
           text: "The Vantiga Payer has confirmed the following preferences for display in the SCM Vantiga Directory:",
-          size: 8.6,
+          size: 8.6,bold: true
         },
       ],
       directory.top - 16,
