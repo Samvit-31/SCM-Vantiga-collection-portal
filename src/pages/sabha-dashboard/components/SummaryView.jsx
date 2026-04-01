@@ -89,50 +89,46 @@ const SummaryView = forwardRef(({
     URL.revokeObjectURL(url);
   };
 
-  const openSummaryPrintWindow = (title, sourceNode) => {
+  const openSummaryPrintWindow = (title, bodyHtml) => {
     const printWindow = window.open('', '_blank', 'width=1300,height=900');
-    if (!printWindow || !sourceNode) return;
-
-    const headMarkup = Array.from(
-      document.querySelectorAll('style, link[rel="stylesheet"]')
-    )
-      .map((node) => node.outerHTML)
-      .join('\n');
-    const contentWidth = Math.max(sourceNode.scrollWidth || 0, sourceNode.offsetWidth || 0, 960);
+    if (!printWindow) return;
 
     printWindow.document.write(`<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <title>${escapeHtml(title)}</title>
-    ${headMarkup}
     <style>
       @page { size: A4 landscape; margin: 12mm; }
-      body { margin: 0; padding: 16px; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .summary-print-root { width: ${contentWidth}px; margin: 0 auto; }
-      svg { max-width: 100%; }
+      body { margin: 0; padding: 16px; background: #fff; color: #0f172a; font-family: Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      h1 { font-size: 22px; margin: 0 0 6px; }
+      h2 { font-size: 15px; margin: 0 0 10px; }
+      p { margin: 0; }
+      .meta { color: #475569; font-size: 12px; margin-bottom: 16px; }
+      .section { border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+      .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+      .kpi-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+      .kpi-title { font-size: 11px; color: #64748b; margin-bottom: 6px; }
+      .kpi-value { font-size: 20px; font-weight: 700; }
+      .kpi-sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; vertical-align: top; }
+      th { background: #f8fafc; text-transform: uppercase; letter-spacing: 0.02em; font-size: 10px; }
+      .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .right { text-align: right; }
+      .muted { color: #64748b; }
     </style>
   </head>
   <body>
-    <div id="summary-print-root" class="summary-print-root"></div>
+    ${bodyHtml}
   </body>
 </html>`);
     printWindow.document.close();
-
-    const appendContent = () => {
-      const container = printWindow.document.getElementById('summary-print-root');
-      if (!container) return;
-      container.appendChild(sourceNode.cloneNode(true));
-      printWindow.focus();
+    printWindow.focus();
+    printWindow.onload = () => {
       printWindow.print();
       printWindow.onafterprint = () => printWindow.close();
     };
-
-    if (printWindow.document.readyState === 'complete') {
-      setTimeout(appendContent, 0);
-    } else {
-      printWindow.onload = () => setTimeout(appendContent, 0);
-    }
   };
 
   const orderedFYs = useMemo(() => {
@@ -363,7 +359,175 @@ const SummaryView = forwardRef(({
     const title = isCompareModeActive
       ? `Treasurer Summary - FY ${orderedFYs.join(', ')}`
       : `Treasurer Summary - FY ${orderedFYs[0] || ''}`;
-    openSummaryPrintWindow(title, summaryRef.current);
+
+    const renderKpiCard = (kpi) => `
+      <div class="kpi-card">
+        <div class="kpi-title">${escapeHtml(kpi.title)}</div>
+        <div class="kpi-value">${escapeHtml(kpi.isCurrency ? kpi.value : String(kpi.families ?? 0))}</div>
+        ${kpi.isCurrency ? '' : `<div class="kpi-sub">Members: ${escapeHtml(String(kpi.members ?? 0))}</div>`}
+      </div>
+    `;
+
+    const comparisonRows = orderedFYs.map((fy) => {
+      const kpis = kpisByFY.get(fy);
+      return `
+        <tr>
+          <td>${escapeHtml(fy)}</td>
+          <td>${escapeHtml(`${kpis?.totalSubmitted?.families ?? 0} | ${kpis?.totalSubmitted?.members ?? 0}`)}</td>
+          <td>${escapeHtml(`${kpis?.totalAcknowledged?.families ?? 0} | ${kpis?.totalAcknowledged?.members ?? 0}`)}</td>
+          <td>${escapeHtml(`${kpis?.pendingAcknowledgement?.families ?? 0} | ${kpis?.pendingAcknowledgement?.members ?? 0}`)}</td>
+          <td class="right">${escapeHtml(formatAmount(kpis?.totalVantigaAmountCollected ?? 0))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const monthlyRows = monthlyTrendData.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.month)}</td>
+        <td class="right">${escapeHtml(formatAmount(row.vantigaAmount || 0))}</td>
+      </tr>
+    `).join('');
+
+    const demographicRows = demographicsData.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.name)}</td>
+        <td class="right">${escapeHtml(String(row.value))}</td>
+        <td class="right">${escapeHtml(`${row.percentage}%`)}</td>
+      </tr>
+    `).join('');
+
+    const paymentRows = paymentModeData.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.name)}</td>
+        <td class="right">${escapeHtml(formatAmount(row.value || 0))}</td>
+      </tr>
+    `).join('');
+
+    const recentRows = recentlyAcknowledged.map((entry) => {
+      const entryMembers = getEntryMembers(entry);
+      const totalAmount = entryMembers.reduce((sum, m) => sum + (Number(m?.amount) || 0), 0);
+      const payerName =
+        entryMembers.find((m) => m.isPrimaryPayer)?.name ||
+        entryMembers.find((m) => m.is_primary_payer)?.full_name ||
+        entryMembers?.[0]?.name ||
+        entryMembers?.[0]?.full_name ||
+        'Unknown';
+
+      return `
+        <tr>
+          <td>${escapeHtml(payerName)}</td>
+          <td>${escapeHtml(entry?.receiptNo || entry?.receipt_no || '-')}</td>
+          <td class="right">${escapeHtml(formatAmount(totalAmount))}</td>
+          <td>${escapeHtml(formatDate(getEntryDate(entry)))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const bodyHtml = `
+      <h1>${escapeHtml(title)}</h1>
+      <p class="meta">Summary for FY ${escapeHtml(infoFYLabel)}${userProfile?.sabha ? ` | Sabha: ${escapeHtml(userProfile.sabha)}` : ''}</p>
+      ${
+        isCompareModeActive
+          ? `
+            <div class="section">
+              <h2>FY Comparison</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>FY</th>
+                    <th>Submitted (Families | Members)</th>
+                    <th>Acknowledged (Families | Members)</th>
+                    <th>Pending (Families | Members)</th>
+                    <th class="right">Vantiga (INR)</th>
+                  </tr>
+                </thead>
+                <tbody>${comparisonRows || '<tr><td colspan="5" class="muted">No data available</td></tr>'}</tbody>
+              </table>
+            </div>
+          `
+          : `
+            <div class="section">
+              <h2>KPI Summary</h2>
+              <div class="kpi-grid">
+                ${kpiData.map(renderKpiCard).join('')}
+              </div>
+            </div>
+          `
+      }
+      <div class="two-col">
+        ${
+          isTreasurer
+            ? `
+              <div class="section">
+                <h2>Demographics of Payers</h2>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Age Group</th>
+                      <th class="right">Count</th>
+                      <th class="right">Percentage</th>
+                    </tr>
+                  </thead>
+                  <tbody>${demographicRows || '<tr><td colspan="3" class="muted">No data available</td></tr>'}</tbody>
+                </table>
+              </div>
+            `
+            : ''
+        }
+        <div class="section">
+          <h2>Month-wise Trend</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th class="right">Acknowledged Vantiga</th>
+              </tr>
+            </thead>
+            <tbody>${monthlyRows || '<tr><td colspan="2" class="muted">No data available</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      ${
+        isTreasurer
+          ? `
+            <div class="section">
+              <h2>Mode of Payment Distribution</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Payment Mode</th>
+                    <th class="right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>${paymentRows || '<tr><td colspan="2" class="muted">No data available</td></tr>'}</tbody>
+              </table>
+            </div>
+          `
+          : ''
+      }
+      ${
+        recentRows
+          ? `
+            <div class="section">
+              <h2>Recently Acknowledged Entries</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Payer</th>
+                    <th>Receipt</th>
+                    <th class="right">Amount</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>${recentRows}</tbody>
+              </table>
+            </div>
+          `
+          : ''
+      }
+    `;
+
+    openSummaryPrintWindow(title, bodyHtml);
   };
 
   useImperativeHandle(ref, () => ({
