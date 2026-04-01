@@ -1648,6 +1648,11 @@ const NewEntryForm = () => {
                     <p className="text-sm font-semibold text-foreground">Total Amount</p>
                     <p className="text-base font-bold text-foreground">Rs. {previewTotalAmount.toFixed(2)}</p>
                   </div>
+                  {totalAmountInWords && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      In words: {totalAmountInWords}
+                    </p>
+                  )}
                 </section>
 
                 <section className="rounded-lg border border-border p-4">
