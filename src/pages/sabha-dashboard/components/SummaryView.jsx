@@ -199,7 +199,6 @@ const SummaryView = forwardRef(({
       totalAcknowledged: { families: totalFamiliesAck, members: totalMembersAck },
       pendingAcknowledgement: { families: totalFamiliesPending, members: totalMembersPending },
       totalVantigaAmountCollected,
-      totalAmountCollected: totalVantigaAmountCollected,
     };
   };
 
@@ -248,15 +247,6 @@ const SummaryView = forwardRef(({
       icon: 'IndianRupee',
       color: '#0ea5e9',
       bgColor: 'bg-sky-500/10',
-      isCurrency: true,
-    },
-    {
-      id: 5,
-      title: 'Total Amount Collected',
-      value: formatAmount(totalKpis?.totalAmountCollected),
-      icon: 'Wallet',
-      color: '#7c3aed',
-      bgColor: 'bg-violet-500/10',
       isCurrency: true,
     },
   ];
@@ -345,7 +335,6 @@ const SummaryView = forwardRef(({
       'Pending Families',
       'Pending Members',
       'Total Vantiga Collected',
-      'Total Collected',
     ];
 
     const rows = orderedFYs.map((fy) => {
@@ -359,7 +348,6 @@ const SummaryView = forwardRef(({
         kpis?.pendingAcknowledgement?.families ?? 0,
         kpis?.pendingAcknowledgement?.members ?? 0,
         kpis?.totalVantigaAmountCollected ?? 0,
-        kpis?.totalAmountCollected ?? 0,
       ];
     });
 
@@ -432,7 +420,6 @@ const SummaryView = forwardRef(({
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Acknowledged (Families | Members)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Pending (Families | Members)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Vantiga (INR)</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Collected (Rs)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -445,13 +432,12 @@ const SummaryView = forwardRef(({
                       <td className="px-4 py-3 text-sm text-foreground">{kpis?.totalAcknowledged?.families ?? 0} | {kpis?.totalAcknowledged?.members ?? 0}</td>
                       <td className="px-4 py-3 text-sm text-foreground">{kpis?.pendingAcknowledgement?.families ?? 0} | {kpis?.pendingAcknowledgement?.members ?? 0}</td>
                       <td className="px-4 py-3 text-sm text-foreground font-semibold">{formatAmount(kpis?.totalVantigaAmountCollected)}</td>
-                      <td className="px-4 py-3 text-sm text-foreground font-semibold">{formatAmount(kpis?.totalAmountCollected)}</td>
                     </tr>
                   );
                 })}
                 {orderedFYs.length === 0 && (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={6}>
+                    <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={5}>
                       No data available
                     </td>
                   </tr>

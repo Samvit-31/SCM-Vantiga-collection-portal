@@ -20,6 +20,7 @@ interface ReceiptMember {
   age: number | null;
   gender: string | null;
   gotra: string | null;
+  other_gotra?: string | null;
   amount: number | null;
   is_primary_payer: boolean | null;
 }
@@ -341,6 +342,7 @@ export async function fetchReceiptPayload(
           age,
           gender,
           gotra,
+          other_gotra,
           amount,
           is_primary_payer
         )
@@ -360,6 +362,10 @@ export async function fetchReceiptPayload(
   const sabha = Array.isArray(data?.sabhas) ? data.sabhas[0] : data?.sabhas;
   const familySabha = Array.isArray(family?.sabhas) ? family.sabhas[0] : family?.sabhas;
   const members = Array.isArray(family?.family_members) ? family.family_members : [];
+  const normalizedMembers = members.map((member: ReceiptMember) => ({
+    ...member,
+    gotra: member?.gotra === "Others" ? optionalTrimmed(member?.other_gotra) || "Others" : member?.gotra,
+  }));
 
   const payerEmail = optionalTrimmed(family?.payer_email);
   if (!payerEmail) {
@@ -367,11 +373,11 @@ export async function fetchReceiptPayload(
   }
 
   const payerName =
-    members.find((member: ReceiptMember) => member?.is_primary_payer)?.full_name?.trim() ||
-    members[0]?.full_name?.trim() ||
+    normalizedMembers.find((member: ReceiptMember) => member?.is_primary_payer)?.full_name?.trim() ||
+    normalizedMembers[0]?.full_name?.trim() ||
     "Vantiga Member";
 
-  const totalAmount = members.reduce((sum: number, member: ReceiptMember) => {
+  const totalAmount = normalizedMembers.reduce((sum: number, member: ReceiptMember) => {
     const amount = Number(member?.amount || 0);
     return sum + (Number.isFinite(amount) ? amount : 0);
   }, 0);
@@ -424,7 +430,7 @@ export async function fetchReceiptPayload(
     pratinidhiName,
     treasurerName,
     totalAmount,
-    members,
+    members: normalizedMembers,
   };
 }
 

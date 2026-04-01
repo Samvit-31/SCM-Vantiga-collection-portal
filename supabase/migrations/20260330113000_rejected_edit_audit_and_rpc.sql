@@ -339,8 +339,8 @@ begin
     raise exception 'At least one member is required.';
   end if;
 
-  if jsonb_array_length(p_members) > 3 then
-    raise exception 'A maximum of 3 members is allowed.';
+  if jsonb_array_length(p_members) > 4 then
+    raise exception 'A maximum of 4 members is allowed.';
   end if;
 
   if p_paid_by <> 'Cash' and coalesce(btrim(p_reference_no), '') = '' then
@@ -369,6 +369,9 @@ begin
       age,
       gender,
       gotra,
+      other_gotra,
+      is_married,
+      maiden_surname,
       amount,
       is_primary_payer
     )
@@ -378,6 +381,9 @@ begin
       nullif(v_member->>'age', '')::integer,
       coalesce(v_member->>'gender', 'Male')::public.gender,
       nullif(v_member->>'gotra', ''),
+      nullif(v_member->>'other_gotra', ''),
+      coalesce((v_member->>'is_married')::boolean, false),
+      nullif(v_member->>'maiden_surname', ''),
       coalesce(nullif(v_member->>'amount', ''), '0')::numeric(12,2),
       coalesce((v_member->>'is_primary_payer')::boolean, false)
     );

@@ -207,7 +207,7 @@ const SabhaDashboard = () => {
             id, sabha_id, family_code, address_multiline, payer_mobile, payer_email,
             opt_show_amount_in_directory, opt_show_mobile_in_directory, opt_show_email_in_directory,
             family_members (
-              id, full_name, age, gender, gotra, amount, is_primary_payer
+              id, full_name, age, gender, gotra, other_gotra, is_married, maiden_surname, amount, is_primary_payer
             )
           )
         `)

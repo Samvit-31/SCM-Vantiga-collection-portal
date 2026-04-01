@@ -7,6 +7,13 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../supabaseClient';
 import { formatCurrencyINR } from '../../../utils/amount';
 
+const getDisplayGotra = (member) => {
+  if (member?.gotra === 'Others') {
+    return member?.other_gotra || member?.otherGotra || 'Others';
+  }
+  return member?.gotra || '';
+};
+
 const AllEntriesTab = ({ selectedFY }) => {
   const navigate = useNavigate();
 
@@ -158,6 +165,9 @@ const AllEntriesTab = ({ selectedFY }) => {
               age,
               gender,
               gotra,
+              other_gotra,
+              is_married,
+              maiden_surname,
               amount,
               is_primary_payer
             )
@@ -204,6 +214,9 @@ const AllEntriesTab = ({ selectedFY }) => {
             age: m.age,
             gender: m.gender,
             gotra: m.gotra,
+            other_gotra: m.other_gotra,
+            is_married: !!m.is_married,
+            maiden_surname: m.maiden_surname || '',
             amount: Number(m.amount || 0),
             is_primary_payer: !!m.is_primary_payer
           }))
@@ -340,7 +353,7 @@ const AllEntriesTab = ({ selectedFY }) => {
         memberName: m?.full_name || '',
         memberAge: m?.age ?? '',
         memberGender: m?.gender ?? '',
-        memberGotra: m?.gotra ?? '',
+        memberGotra: getDisplayGotra(m),
         memberIsPrimary: m?.is_primary_payer ? 'Yes' : 'No',
         submittedDate: entry?.submittedDate,
         acknowledgedDate: entry?.acknowledgedDate,

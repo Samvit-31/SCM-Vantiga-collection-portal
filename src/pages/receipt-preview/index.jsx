@@ -96,7 +96,7 @@ const mapDbEntryToReceiptEntry = (dbEntry, fallbackEntry = {}) => {
           name: m?.full_name || '-',
           age: m?.age,
           gender: m?.gender,
-          gotra: m?.gotra,
+          gotra: m?.gotra === 'Others' ? (m?.other_gotra || 'Others') : m?.gotra,
           amount: Number(m?.amount || 0),
           isPrimaryPayer: !!m?.is_primary_payer
         }))
@@ -164,7 +164,7 @@ const ReceiptPreview = ({ standalone = false }) => {
               opt_show_email_in_directory,
               sabhas:sabha_id ( name ),
               family_members (
-                id, full_name, age, gender, gotra, amount, is_primary_payer
+                id, full_name, age, gender, gotra, other_gotra, amount, is_primary_payer
               )
             )
           `)

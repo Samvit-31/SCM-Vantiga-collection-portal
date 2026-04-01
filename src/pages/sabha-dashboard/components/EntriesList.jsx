@@ -17,6 +17,13 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
+const getDisplayGotra = (member) => {
+  if (member?.gotra === "Others") {
+    return member?.otherGotra || "Others";
+  }
+  return member?.gotra || "";
+};
+
 const REJECTION_REASONS = [
   "Amount not reflected in the bank account.",
   "Cheque bounced.",
@@ -150,6 +157,9 @@ const EntriesList = forwardRef(({
           age: m.age,
           gender: m.gender,
           gotra: m.gotra,
+          otherGotra: m.other_gotra,
+          isMarried: !!m.is_married,
+          maidenSurname: m.maiden_surname || "",
           amount: Number(m.amount || 0),
           isPrimaryPayer: !!m.is_primary_payer,
         })),
@@ -384,7 +394,7 @@ const EntriesList = forwardRef(({
         memberName: m?.name || "",
         memberAge: m?.age ?? "",
         memberGender: m?.gender ?? "",
-        memberGotra: m?.gotra ?? "",
+        memberGotra: getDisplayGotra(m),
         isPrimary: m?.isPrimaryPayer ? "Yes" : "No",
         memberAmount: Number(m?.amount || 0),
         entryTotal,
@@ -1338,6 +1348,9 @@ const EntriesList = forwardRef(({
                           <tr>
                             <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Name</th>
                             <th className="px-3 py-2 text-center text-xs font-semibold text-muted-foreground">Age</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Gender</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Married</th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Maiden Surname</th>
                             <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">Gotra</th>
                             <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">Amount</th>
                           </tr>
@@ -1350,7 +1363,10 @@ const EntriesList = forwardRef(({
                                 {member?.isPrimaryPayer}
                               </td>
                               <td className="px-3 py-2 text-center text-foreground">{member?.age}</td>
-                              <td className="px-3 py-2 text-foreground">{member?.gotra}</td>
+                              <td className="px-3 py-2 text-foreground">{member?.gender || "—"}</td>
+                              <td className="px-3 py-2 text-foreground">{member?.isMarried ? "Yes" : "No"}</td>
+                              <td className="px-3 py-2 text-foreground">{member?.maidenSurname || "—"}</td>
+                              <td className="px-3 py-2 text-foreground">{getDisplayGotra(member) || "—"}</td>
                               <td className="px-3 py-2 text-right text-foreground font-semibold">
                                 {formatAmount(member?.amount)}
                               </td>

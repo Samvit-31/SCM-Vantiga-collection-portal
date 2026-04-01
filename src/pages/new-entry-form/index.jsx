@@ -4,6 +4,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
+import Checkbox from '../../components/ui/Checkbox';
 import Icon from '../../components/AppIcon';
 import CommonHeader from '../../components/ui/CommonHeader';
 import {
@@ -90,7 +91,10 @@ const NewEntryForm = () => {
       lastName: '',
       age: '',
       gender: 'Male',
+      isMarried: false,
+      maidenSurname: '',
       gotra: '',
+      otherGotra: '',
       amount: '',
       relationship: 'Member'
     }
@@ -110,7 +114,8 @@ const NewEntryForm = () => {
   // 2) vantiga_entries has columns: sabha_id (uuid), family_id (uuid)
   // 3) families table has: id, address_multiline, payer_mobile, payer_email,
   //    opt_show_amount_in_directory, opt_show_mobile_in_directory, opt_show_email_in_directory
-  // 4) family_members table has: id, family_id (uuid), full_name, age, gender, gotra, amount, is_primary_payer
+  // 4) family_members table has: id, family_id (uuid), full_name, age, gender, gotra, other_gotra,
+  //    is_married, maiden_surname, amount, is_primary_payer
   // 5) userProfile in localStorage contains: role, sabha, sabhaId (uuid)
   // ---------
 
@@ -237,6 +242,9 @@ const NewEntryForm = () => {
             age,
             gender,
             gotra,
+            other_gotra,
+            is_married,
+            maiden_surname,
             amount,
             is_primary_payer
           )
@@ -288,7 +296,10 @@ const NewEntryForm = () => {
         lastName,
         age: member?.age != null ? String(member.age) : '',
         gender: member?.gender || 'Male',
+        isMarried: !!member?.is_married,
+        maidenSurname: member?.maiden_surname || '',
         gotra: member?.gotra || '',
+        otherGotra: member?.other_gotra || '',
         amount: member?.amount != null ? String(Number(member.amount)) : '',
         relationship: index === 0 ? 'Member' : 'Family Member'
       };
@@ -317,7 +328,10 @@ const NewEntryForm = () => {
             lastName: '',
             age: '',
             gender: 'Male',
+            isMarried: false,
+            maidenSurname: '',
             gotra: '',
+            otherGotra: '',
             amount: '',
             relationship: 'Member'
           }]
@@ -579,6 +593,20 @@ const NewEntryForm = () => {
     { value: 'Kamshya', label: 'Kamshya' }
   ];
 
+  const getGotraOptionsForMember = (member) => {
+    if (member?.isMarried && member?.gender === 'Female') {
+      return [...gotraOptions, { value: 'Others', label: 'Others' }];
+    }
+    return gotraOptions;
+  };
+
+  const getDisplayGotra = (member) => {
+    if (member?.gotra === 'Others') {
+      return member?.otherGotra?.trim() || 'Others';
+    }
+    return member?.gotra || '';
+  };
+
   const yesNoOptions = [
     { value: 'Yes', label: 'Yes' },
     { value: 'No', label: 'No' }
@@ -654,6 +682,19 @@ const NewEntryForm = () => {
       return 'Gotra is required';
     }
 
+    if (
+      field === 'maidenSurname' &&
+      member?.isMarried &&
+      member?.gender === 'Female' &&
+      !normalizedValue
+    ) {
+      return 'Maiden surname is required';
+    }
+
+    if (field === 'otherGotra' && member?.gotra === 'Others' && !normalizedValue) {
+      return 'Custom gotra is required';
+    }
+
     if (field === 'amount') {
       if (!normalizedValue) return 'Valid amount is required';
       if (!AMOUNT_PATTERN.test(normalizedValue)) return 'Enter a valid amount';
@@ -697,7 +738,7 @@ const NewEntryForm = () => {
     setErrors((prev) => ({ ...prev, entryFY: validateTopLevelField('entryFY', value) }));
   };
 
-  // Member change + gotra auto-copy from member 1
+  // Member change + conditional marital/gotra field resets
   const handleMemberChange = (index, field, value) => {
     if (field === 'age' && !AGE_INPUT_PATTERN.test(value)) {
       return;
@@ -713,20 +754,56 @@ const NewEntryForm = () => {
     }
 
     const updatedMembers = [...members];
-    updatedMembers[index] = { ...updatedMembers?.[index], [field]: value };
+    const currentMember = { ...updatedMembers?.[index], [field]: value };
 
-    if (index === 0 && field === 'gotra' && value) {
-      updatedMembers?.forEach((member, idx) => {
-        if (idx > 0) {
-          updatedMembers[idx] = { ...updatedMembers?.[idx], gotra: value };
-        }
-      });
+    if (field === 'isMarried' && !value) {
+      currentMember.maidenSurname = '';
     }
 
+    if (field === 'gender' && value !== 'Female') {
+      currentMember.maidenSurname = '';
+      if (currentMember?.gotra === 'Others') {
+        currentMember.gotra = '';
+        currentMember.otherGotra = '';
+      }
+    }
+
+    if (field === 'gotra' && value !== 'Others') {
+      currentMember.otherGotra = '';
+    }
+
+    if (!(currentMember?.isMarried && currentMember?.gender === 'Female')) {
+      currentMember.maidenSurname = '';
+      if (currentMember?.gotra === 'Others') {
+        currentMember.gotra = '';
+      }
+      currentMember.otherGotra = '';
+    }
+
+    updatedMembers[index] = currentMember;
+
     setMembers(updatedMembers);
-    const errorKey = `member_${index}_${field}`;
-    setTouchedFields((prev) => ({ ...prev, [errorKey]: true }));
-    setErrors((prev) => ({ ...prev, [errorKey]: validateMemberField(updatedMembers?.[index], index, field) }));
+    const fieldsToValidate = ['firstName', 'lastName', 'age', 'gender', 'isMarried', 'maidenSurname', 'gotra', 'otherGotra', 'amount'];
+
+    setTouchedFields((prev) => {
+      const nextTouched = { ...prev, [`member_${index}_${field}`]: true };
+      if (field === 'gender' || field === 'isMarried') {
+        nextTouched[`member_${index}_maidenSurname`] = true;
+        nextTouched[`member_${index}_gotra`] = true;
+        nextTouched[`member_${index}_otherGotra`] = true;
+      }
+      if (field === 'gotra') {
+        nextTouched[`member_${index}_otherGotra`] = true;
+      }
+      return nextTouched;
+    });
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+      fieldsToValidate.forEach((fieldName) => {
+        nextErrors[`member_${index}_${fieldName}`] = validateMemberField(updatedMembers?.[index], index, fieldName);
+      });
+      return nextErrors;
+    });
   };
 
   const addMember = () => {
@@ -734,14 +811,16 @@ const NewEntryForm = () => {
     if (additionalMembersCount >= MAX_ADDITIONAL_MEMBERS) {
       return;
     }
-    const member1Gotra = members?.[0]?.gotra || '';
     const newMember = {
       id: members?.length + 1,
       firstName: '',
       lastName: '',
       age: '',
       gender: 'Male',
-      gotra: member1Gotra,
+      isMarried: false,
+      maidenSurname: '',
+      gotra: '',
+      otherGotra: '',
       amount: '',
       relationship: 'Family Member'
     };
@@ -798,6 +877,16 @@ const NewEntryForm = () => {
       if (gotraError) {
         newErrors[`member_${index}_gotra`] = gotraError;
       }
+
+      const maidenSurnameError = validateMemberField(member, index, 'maidenSurname');
+      if (maidenSurnameError) {
+        newErrors[`member_${index}_maidenSurname`] = maidenSurnameError;
+      }
+
+      const otherGotraError = validateMemberField(member, index, 'otherGotra');
+      if (otherGotraError) {
+        newErrors[`member_${index}_otherGotra`] = otherGotraError;
+      }
     });
 
     setErrors(newErrors);
@@ -820,6 +909,8 @@ const NewEntryForm = () => {
         nextTouched[`member_${index}_age`] = true;
         nextTouched[`member_${index}_amount`] = true;
         nextTouched[`member_${index}_gotra`] = true;
+        nextTouched[`member_${index}_maidenSurname`] = true;
+        nextTouched[`member_${index}_otherGotra`] = true;
       });
       return nextTouched;
     });
@@ -872,6 +963,9 @@ const NewEntryForm = () => {
           age: parseInt(m?.age, 10),
           gender: m?.gender,
           gotra: m?.gotra || null,
+          other_gotra: m?.gotra === 'Others' ? (m?.otherGotra || null) : null,
+          is_married: !!m?.isMarried,
+          maiden_surname: m?.isMarried && m?.gender === 'Female' ? (m?.maidenSurname || null) : null,
           amount: Number(m?.amount),
           is_primary_payer: idx === 0,
         }));
@@ -939,6 +1033,9 @@ const NewEntryForm = () => {
         age: parseInt(m?.age, 10),
         gender: m?.gender,
         gotra: m?.gotra || null,
+        other_gotra: m?.gotra === 'Others' ? (m?.otherGotra || null) : null,
+        is_married: !!m?.isMarried,
+        maiden_surname: m?.isMarried && m?.gender === 'Female' ? (m?.maidenSurname || null) : null,
         amount: Number(m?.amount),
         is_primary_payer: idx === 0, // Member 1 is primary payer
       }));
@@ -1284,17 +1381,50 @@ const NewEntryForm = () => {
                       options={genderOptions}
                       required
                     />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none text-foreground">
+                        Married
+                      </label>
+                      <div className="flex h-10 items-center gap-3 rounded-md border border-input bg-background px-3 py-2">
+                        <Checkbox
+                          id={`member-${index}-married`}
+                          checked={!!member?.isMarried}
+                          onCheckedChange={(checked) => handleMemberChange(index, 'isMarried', checked)}
+                        />
+                        <label htmlFor={`member-${index}-married`} className="cursor-pointer text-sm text-foreground">
+                          {member?.isMarried ? 'Married' : 'Unmarried'}
+                        </label>
+                      </div>
+                    </div>
                     {!isMathMaryada && (
                       <Select
                         label="Gotra"
                         value={member?.gotra}
                         onChange={(value) => handleMemberChange(index, 'gotra', value)}
-                        options={gotraOptions}
+                        options={getGotraOptionsForMember(member)}
                         placeholder="Select Gotra"
                         required
                         error={touchedFields?.[`member_${index}_gotra`] ? errors?.[`member_${index}_gotra`] : ''}
-                        disabled={index > 0}
-                        title={index > 0 ? 'Gotra is auto-populated from Member 1' : ''}
+                      />
+                    )}
+                    {member?.isMarried && member?.gender === 'Female' && (
+                      <Input
+                        label="Maiden Surname"
+                        value={member?.maidenSurname}
+                        onChange={(e) => handleMemberChange(index, 'maidenSurname', e?.target?.value)}
+                        placeholder="Enter maiden surname"
+                        required
+                        error={touchedFields?.[`member_${index}_maidenSurname`] ? errors?.[`member_${index}_maidenSurname`] : ''}
+                      />
+                    )}
+                    {member?.gotra === 'Others' && (
+                      <Input
+                        label="Custom Gotra"
+                        value={member?.otherGotra}
+                        onChange={(e) => handleMemberChange(index, 'otherGotra', e?.target?.value)}
+                        placeholder="Enter gotra"
+                        required
+                        error={touchedFields?.[`member_${index}_otherGotra`] ? errors?.[`member_${index}_otherGotra`] : ''}
                       />
                     )}
                     <Input
@@ -1308,14 +1438,6 @@ const NewEntryForm = () => {
                       error={touchedFields?.[`member_${index}_amount`] ? errors?.[`member_${index}_amount`] : ''}
                     />
                   </div>
-                  {!isMathMaryada && index > 0 && (
-                    <div className="mt-3">
-                      <p className="text-xs text-muted-foreground italic flex items-center gap-1">
-                        <Icon name="Info" size={14} />
-                        Gotra is automatically populated from Member 1
-                      </p>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -1538,7 +1660,7 @@ const NewEntryForm = () => {
                           {!isMathMaryada && (
                             <div>
                               <p className="text-xs text-muted-foreground">Gotra</p>
-                              <p className="font-medium text-foreground">{member?.gotra || '-'}</p>
+                              <p className="font-medium text-foreground">{getDisplayGotra(member) || '-'}</p>
                             </div>
                           )}
                           <div>
