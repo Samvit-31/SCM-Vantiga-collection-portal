@@ -362,11 +362,6 @@ const ReceiptPreview = ({ standalone = false }) => {
 
     try {
       setIsDownloadingPdf(true);
-      if (entry?.entryType === 'Math Maryada') {
-        await downloadReceiptPreviewAsPdf();
-        return;
-      }
-
       const entryId = entry?.entryId || entry?.id;
       const receiptNo = entry?.receiptNo;
 
@@ -403,6 +398,31 @@ const ReceiptPreview = ({ standalone = false }) => {
   const isMathMaryada = entry?.entryType === 'Math Maryada';
 
   if (!entry) return null;
+
+  if (isMathMaryada) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className={`print:hidden ${standalone ? 'hidden' : ''}`}>
+          <CommonHeader />
+        </div>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+          <div className="max-w-lg w-full bg-white border border-slate-300 rounded-lg shadow-sm p-6 text-center">
+            <div className="text-xl font-semibold text-slate-900">Receipt Unsupported</div>
+            <p className="mt-3 text-sm text-slate-600">
+              Math Maryada receipts are no longer available in the application UI.
+            </p>
+            {!standalone && (
+              <div className="mt-5">
+                <Button variant="outline" onClick={handleBack} iconName="ArrowLeft" iconPosition="left">
+                  Back to Dashboard
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const totalAmount = members.reduce((sum, m) => sum + (Number(m?.amount) || 0), 0);
   const amountInWords = amountToWordsIndian(totalAmount);
@@ -487,7 +507,7 @@ const ReceiptPreview = ({ standalone = false }) => {
 
             <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between">
               <div>
-                <div className="text-lg font-bold">{isMathMaryada ? 'Math Maryada Receipt' : 'Vantiga Receipt'}</div>
+                <div className="text-lg font-bold">Vantiga Receipt</div>
                 <div className="text-sm font-semibold mt-0.5">{collectingSabha}</div>
               </div>
               <div className="text-sm leading-tight text-right font-semibold">
@@ -501,31 +521,20 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            {!isMathMaryada && (
-              <div className="px-6 py-2 border-b border-slate-300 text-center">
-                <div className="inline-block text-sm italic bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
-                  Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.
-                </div>
+            <div className="px-6 py-2 border-b border-slate-300 text-center">
+              <div className="inline-block text-sm italic bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
+                Vantiga is a voluntary contribution towards the activities of Shri Chitrapur Math.
               </div>
-            )}
+            </div>
 
-
-            {isMathMaryada ? (
-              <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
-                Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
-                <span className="font-semibold"> for Year:</span>{' '}
-                <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
+            <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between gap-4 text-base font-semibold">
+              <div>
+                Received From : <span className="font-normal">{primaryPayerName}</span>
               </div>
-            ) : (
-              <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between gap-4 text-base font-semibold">
-                <div>
-                  Received From : <span className="font-normal">{primaryPayerName}</span>
-                </div>
-                <div className="text-right whitespace-nowrap">
-                  Vantiga for the year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
-                </div>
+              <div className="text-right whitespace-nowrap">
+                Vantiga for the year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
               </div>
-            )}
+            </div>
 
             <div className="border-b border-slate-300 px-6 py-2 space-y-2">
               <div className="text-base font-semibold">
@@ -542,42 +551,35 @@ const ReceiptPreview = ({ standalone = false }) => {
             </div>
 
             <div className="px-6 pb-2">
-              <div className="text-base font-semibold mb-1.5">{isMathMaryada ? 'Math Maryada Payer Details:' : 'Vantiga Payer Details:'}</div>
-              {isMathMaryada ? (
-                <div className="border border-slate-300 rounded-md p-3 text-sm">
-                  <div><span className="font-semibold">Name:</span> {primaryPayerName}</div>
-                  <div className="mt-1"><span className="font-semibold">Amount:</span> {formatAmountIndian(totalAmount)}</div>
-                </div>
-              ) : (
-                <div className="border border-slate-300 rounded-md overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-300">
-                        <th className="text-left px-3 py-2 w-[41%]">Name</th>
-                        <th className="text-left px-3 py-2 w-[10%]">Age</th>
-                        <th className="text-left px-3 py-2 w-[14%]">Gender</th>
-                        <th className="text-left px-3 py-2 w-[15%]">Gotra</th>
-                        <th className="text-center px-3 py-2 w-[20%]">Amount</th>
+              <div className="text-base font-semibold mb-1.5">Vantiga Payer Details:</div>
+              <div className="border border-slate-300 rounded-md overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-300">
+                      <th className="text-left px-3 py-2 w-[41%]">Name</th>
+                      <th className="text-left px-3 py-2 w-[10%]">Age</th>
+                      <th className="text-left px-3 py-2 w-[14%]">Gender</th>
+                      <th className="text-left px-3 py-2 w-[15%]">Gotra</th>
+                      <th className="text-center px-3 py-2 w-[20%]">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableRows.map((m, idx) => (
+                      <tr key={m?.memberId || `blank-${idx}`} className="border-b border-slate-200">
+                        <td className="px-3 py-2">{m?.name || ''}</td>
+                        <td className="px-3 py-2">{m?.age ?? ''}</td>
+                        <td className="px-3 py-2">{m?.gender ?? ''}</td>
+                        <td className="px-3 py-2">{m?.gotra ?? ''}</td>
+                        <td className="px-3 py-2 text-right">{m ? formatAmountIndian(m?.amount) : ''}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {tableRows.map((m, idx) => (
-                        <tr key={m?.memberId || `blank-${idx}`} className="border-b border-slate-200">
-                          <td className="px-3 py-2">{m?.name || ''}</td>
-                          <td className="px-3 py-2">{m?.age ?? ''}</td>
-                          <td className="px-3 py-2">{m?.gender ?? ''}</td>
-                          <td className="px-3 py-2">{m?.gotra ?? ''}</td>
-                          <td className="px-3 py-2 text-right">{m ? formatAmountIndian(m?.amount) : ''}</td>
-                        </tr>
-                      ))}
-                      <tr className="font-semibold">
-                        <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
-                        <td className="px-3 py-2 text-right">{formatAmountIndian(totalAmount)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                    <tr className="font-semibold">
+                      <td colSpan={4} className="px-3 py-2 text-right">TOTAL</td>
+                      <td className="px-3 py-2 text-right">{formatAmountIndian(totalAmount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               <div className="mt-1.5 text-base font-semibold">
                 AMOUNT IN WORDS: <span className="font-medium"> Rupees</span>
                 <span className="font-medium">{amountInWords}</span>
@@ -596,29 +598,27 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            {!isMathMaryada && (
-              <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
-                <div className="flex justify-center mb-3">
-                  <div className="text-sm text-center leading-snug">
-                    <span className="inline-block bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
-                      The Vantiga Payer has confirmed the following preferences for display in the{' '}
-                      <span className="font-semibold">SCM Vantiga Directory:</span>
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
-                  <div>
-                    <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Mobile Number:</span> {optShowMobile}
-                  </div>
-                  <div>
-                    <span className="font-semibold">Email ID:</span> {optShowEmail}
-                  </div>
+            <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
+              <div className="flex justify-center mb-3">
+                <div className="text-sm text-center leading-snug">
+                  <span className="inline-block bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
+                    The Vantiga Payer has confirmed the following preferences for display in the{' '}
+                    <span className="font-semibold">SCM Vantiga Directory:</span>
+                  </span>
                 </div>
               </div>
-            )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                <div>
+                  <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
+                </div>
+                <div>
+                  <span className="font-semibold">Mobile Number:</span> {optShowMobile}
+                </div>
+                <div>
+                  <span className="font-semibold">Email ID:</span> {optShowEmail}
+                </div>
+              </div>
+            </div>
 
             <div className="border-t border-slate-300 px-6 py-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">

@@ -17,12 +17,6 @@ const STATUS_OPTIONS = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
-const ENTRY_TYPE_OPTIONS = [
-  { value: "ALL", label: "All Types" },
-  { value: "Vantiga", label: "Vantiga" },
-  { value: "Math Maryada", label: "Math Maryada" },
-];
-
 const REJECTION_REASONS = [
   "Amount not reflected in the bank account.",
   "Cheque bounced.",
@@ -57,7 +51,6 @@ const EntriesList = forwardRef(({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [entryTypeFilter, setEntryTypeFilter] = useState("ALL");
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -340,14 +333,12 @@ const EntriesList = forwardRef(({
           return false;
         }
 
-        if (entryTypeFilter !== "ALL" && (entry?.entryType || "Vantiga") !== entryTypeFilter) {
-          return false;
-        }
+        if ((entry?.entryType || "Vantiga") !== "Vantiga") return false;
 
         return true;
       })
       .sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate));
-  }, [selectedFY, searchQuery, statusFilter, entryTypeFilter, entries, userRole, pratinidhiFilter, effectiveUserId]);
+  }, [selectedFY, searchQuery, statusFilter, entries, userRole, pratinidhiFilter, effectiveUserId]);
 
   // ✅ NEW: member-wise export rows (respects filters)
   const memberWiseRowsForExport = useMemo(() => {
@@ -1002,14 +993,6 @@ const EntriesList = forwardRef(({
               value={statusFilter}
               onChange={(value) => setStatusFilter(value)} // ✅ fixed (no e.target.value)
               options={STATUS_OPTIONS}
-              className="w-full"
-            />
-          </div>
-          <div className="w-full sm:w-48">
-            <Select
-              value={entryTypeFilter}
-              onChange={(value) => setEntryTypeFilter(value)}
-              options={ENTRY_TYPE_OPTIONS}
               className="w-full"
             />
           </div>

@@ -51,7 +51,7 @@ interface ReceiptPayload {
 }
 
 function getEmailBodyCopy(entryType: string): string {
-  const receiptLabel = entryType === "Math Maryada" ? "Digital Math Maryada receipt" : "Digital Vantiga receipt";
+  const receiptLabel = "Digital Vantiga receipt";
 
   return `
 Jai Shankar,
@@ -429,6 +429,10 @@ export async function fetchReceiptPayload(
 }
 
 export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> {
+  if (payload.entryType === "Math Maryada") {
+    throw new Error("Math Maryada receipts are no longer supported in the application UI.");
+  }
+
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
   const titleFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);

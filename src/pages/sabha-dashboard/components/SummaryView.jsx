@@ -1,4 +1,4 @@
-import React, { useMemo, useImperativeHandle, forwardRef, useState, useRef } from 'react';
+import React, { useMemo, useImperativeHandle, forwardRef, useRef } from 'react';
 import {
   PieChart,
   Pie,
@@ -13,15 +13,9 @@ import {
   Legend,
 } from 'recharts';
 import Icon from '../../../components/AppIcon';
-import Select from '../../../components/ui/Select';
 import { formatCurrencyINR } from '../../../utils/amount';
 
 const MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
-const ENTRY_TYPE_OPTIONS = [
-  { value: 'ALL', label: 'All Types' },
-  { value: 'Vantiga', label: 'Vantiga' },
-  { value: 'Math Maryada', label: 'Math Maryada' }
-];
 
 const SummaryView = forwardRef(({
   selectedFY,
@@ -35,13 +29,11 @@ const SummaryView = forwardRef(({
   onPratinidhiFilterChange,
 }, ref) => {
   const summaryRef = useRef(null);
-  const [entryTypeFilter, setEntryTypeFilter] = useState('ALL');
 
   const getEntryFy = (entry) => entry?.fy;
   const getEntryType = (entry) => entry?.entryType || entry?.entry_type || 'Vantiga';
   const getEntryStatus = (entry) => entry?.status;
   const getEntrySubmittedBy = (entry) => entry?.submitted_by || entry?.submittedBy || entry?.submittedByUserId;
-  const getEntryPaidBy = (entry) => entry?.paidBy || entry?.paid_by;
   const getEntryDate = (entry) =>
     entry?.acknowledgedDate || entry?.acknowledged_at || entry?.submittedDate || entry?.submitted_at;
   const getEntrySabhaId = (entry) =>
@@ -53,6 +45,7 @@ const SummaryView = forwardRef(({
   const getEntrySabhaName = (entry) => entry?.family?.sabha || entry?.sabha || entry?.families?.sabha;
   const getEntryMembers = (entry) =>
     entry?.members || entry?.family?.family_members || entry?.families?.family_members || [];
+  const getEntryPaidBy = (entry) => entry?.paidBy || entry?.paid_by;
 
   const formatAmount = formatCurrencyINR;
 
@@ -128,8 +121,7 @@ const SummaryView = forwardRef(({
     const appendContent = () => {
       const container = printWindow.document.getElementById('summary-print-root');
       if (!container) return;
-      const cloned = sourceNode.cloneNode(true);
-      container.appendChild(cloned);
+      container.appendChild(sourceNode.cloneNode(true));
       printWindow.focus();
       printWindow.print();
       printWindow.onafterprint = () => printWindow.close();
@@ -152,7 +144,6 @@ const SummaryView = forwardRef(({
   const isTreasurer = userProfile?.role === 'treasurer';
   const isCompareModeActive = isTreasurer && summaryMode === 'compare' && orderedFYs.length > 1;
 
-  // Robust filter: by FY + sabhaId when available (fallback to sabha name)
   const filteredEntries = useMemo(() => {
     if (!entries || orderedFYs.length === 0) return [];
 
@@ -163,35 +154,28 @@ const SummaryView = forwardRef(({
     return entries.filter((entry) => {
       const entryFY = getEntryFy(entry);
       if (!orderedFYs.includes(entryFY)) return false;
+      if (getEntryType(entry) !== 'Vantiga') return false;
 
       if (userProfile?.role === 'treasurer' && pratinidhiFilter && pratinidhiFilter !== 'ALL') {
-        const entrySubmittedBy = getEntrySubmittedBy(entry);
-        if (entrySubmittedBy !== pratinidhiFilter) return false;
+        if (getEntrySubmittedBy(entry) !== pratinidhiFilter) return false;
       }
 
       if (userProfile?.role === 'pratinidhi' && currentUserId) {
-        const entrySubmittedBy = getEntrySubmittedBy(entry);
-        if (entrySubmittedBy !== currentUserId) return false;
+        if (getEntrySubmittedBy(entry) !== currentUserId) return false;
       }
 
-      if (entryTypeFilter !== 'ALL' && getEntryType(entry) !== entryTypeFilter) {
-        return false;
-      }
-
-      // Prefer sabhaId filtering
       if (sabhaId) {
         const entrySabhaId = getEntrySabhaId(entry);
         return entrySabhaId ? entrySabhaId === sabhaId : true;
       }
 
-      // Fallback: sabha name match (legacy/mock)
       if (sabhaName) {
         return getEntrySabhaName(entry) === sabhaName;
       }
 
       return true;
     });
-  }, [entries, orderedFYs, userProfile, pratinidhiFilter, entryTypeFilter]);
+  }, [entries, orderedFYs, userProfile, pratinidhiFilter]);
 
   const computeKpis = (entryList) => {
     const all = entryList || [];
@@ -200,28 +184,12 @@ const SummaryView = forwardRef(({
 
     const totalFamiliesAll = all.length;
     const totalMembersAll = all.reduce((sum, e) => sum + getEntryMembers(e).length, 0);
-
     const totalFamiliesAck = acknowledged.length;
     const totalMembersAck = acknowledged.reduce((sum, e) => sum + getEntryMembers(e).length, 0);
-
     const totalFamiliesPending = submitted.length;
     const totalMembersPending = submitted.reduce((sum, e) => sum + getEntryMembers(e).length, 0);
 
-    const totalVantigaAmountCollected = acknowledged
-      .filter((e) => getEntryType(e) === 'Vantiga')
-      .reduce((sum, e) => {
-        const entryTotal = getEntryMembers(e).reduce((mSum, m) => mSum + (Number(m?.amount) || 0), 0);
-        return sum + entryTotal;
-      }, 0);
-
-    const totalMathMaryadaAmountCollected = acknowledged
-      .filter((e) => getEntryType(e) === 'Math Maryada')
-      .reduce((sum, e) => {
-        const entryTotal = getEntryMembers(e).reduce((mSum, m) => mSum + (Number(m?.amount) || 0), 0);
-        return sum + entryTotal;
-      }, 0);
-
-    const totalAmountCollected = acknowledged.reduce((sum, e) => {
+    const totalVantigaAmountCollected = acknowledged.reduce((sum, e) => {
       const entryTotal = getEntryMembers(e).reduce((mSum, m) => mSum + (Number(m?.amount) || 0), 0);
       return sum + entryTotal;
     }, 0);
@@ -231,16 +199,14 @@ const SummaryView = forwardRef(({
       totalAcknowledged: { families: totalFamiliesAck, members: totalMembersAck },
       pendingAcknowledgement: { families: totalFamiliesPending, members: totalMembersPending },
       totalVantigaAmountCollected,
-      totalMathMaryadaAmountCollected,
-      totalAmountCollected,
+      totalAmountCollected: totalVantigaAmountCollected,
     };
   };
 
   const kpisByFY = useMemo(() => {
     const grouped = new Map();
     orderedFYs.forEach((fy) => {
-      const fyEntries = filteredEntries.filter((entry) => getEntryFy(entry) === fy);
-      grouped.set(fy, computeKpis(fyEntries));
+      grouped.set(fy, computeKpis(filteredEntries.filter((entry) => getEntryFy(entry) === fy)));
     });
     return grouped;
   }, [filteredEntries, orderedFYs]);
@@ -286,15 +252,6 @@ const SummaryView = forwardRef(({
     },
     {
       id: 5,
-      title: 'Total Math Maryada Amount Collected',
-      value: formatAmount(totalKpis?.totalMathMaryadaAmountCollected),
-      icon: 'IndianRupee',
-      color: '#f97316',
-      bgColor: 'bg-orange-500/10',
-      isCurrency: true,
-    },
-    {
-      id: 6,
       title: 'Total Amount Collected',
       value: formatAmount(totalKpis?.totalAmountCollected),
       icon: 'Wallet',
@@ -332,11 +289,7 @@ const SummaryView = forwardRef(({
   }, [filteredEntries]);
 
   const monthlyTrendData = useMemo(() => {
-    const rows = MONTHS.map((month) => ({
-      month,
-      vantigaAmount: 0,
-      mathMaryadaAmount: 0,
-    }));
+    const rows = MONTHS.map((month) => ({ month, vantigaAmount: 0 }));
 
     filteredEntries
       .filter((e) => getEntryStatus(e) === 'ACKNOWLEDGED')
@@ -349,12 +302,7 @@ const SummaryView = forwardRef(({
         const monthIndex = date.getMonth();
         const fyMonthIndex = monthIndex >= 3 ? monthIndex - 3 : monthIndex + 9;
         const entryTotal = getEntryMembers(entry).reduce((sum, m) => sum + (Number(m?.amount) || 0), 0);
-
-        if (getEntryType(entry) === 'Math Maryada') {
-          rows[fyMonthIndex].mathMaryadaAmount += entryTotal;
-        } else {
-          rows[fyMonthIndex].vantigaAmount += entryTotal;
-        }
+        rows[fyMonthIndex].vantigaAmount += entryTotal;
       });
 
     return rows;
@@ -397,7 +345,6 @@ const SummaryView = forwardRef(({
       'Pending Families',
       'Pending Members',
       'Total Vantiga Collected',
-      'Total Math Maryada Collected',
       'Total Collected',
     ];
 
@@ -412,7 +359,6 @@ const SummaryView = forwardRef(({
         kpis?.pendingAcknowledgement?.families ?? 0,
         kpis?.pendingAcknowledgement?.members ?? 0,
         kpis?.totalVantigaAmountCollected ?? 0,
-        kpis?.totalMathMaryadaAmountCollected ?? 0,
         kpis?.totalAmountCollected ?? 0,
       ];
     });
@@ -436,12 +382,10 @@ const SummaryView = forwardRef(({
     exportSummaryCsv,
   }));
 
-  const infoFYLabel =
-    orderedFYs.length > 0 ? orderedFYs.join(', ') : '-';
+  const infoFYLabel = orderedFYs.length > 0 ? orderedFYs.join(', ') : '-';
 
   return (
     <div className="space-y-6" ref={summaryRef}>
-      {/* Selected FY Info */}
       <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
         <div className="flex items-center gap-2">
           <Icon name="Calendar" size={18} color="var(--color-primary)" />
@@ -468,17 +412,6 @@ const SummaryView = forwardRef(({
               </div>
             </>
           )}
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Icon name="Filter" size={18} />
-            Entry Type
-          </div>
-          <div className="w-full sm:w-56">
-            <Select
-              value={entryTypeFilter}
-              onChange={setEntryTypeFilter}
-              options={ENTRY_TYPE_OPTIONS}
-            />
-          </div>
         </div>
       </div>
 
@@ -494,27 +427,12 @@ const SummaryView = forwardRef(({
             <table className="min-w-[900px] w-full">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky left-0 bg-muted/50">
-                    FY
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Submitted (Families | Members)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Acknowledged (Families | Members)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Pending (Families | Members)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Vantiga (INR)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Math Maryada (INR)
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                    Total Collected (₹)
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky left-0 bg-muted/50">FY</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Submitted (Families | Members)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Acknowledged (Families | Members)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Pending (Families | Members)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Vantiga (INR)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Collected (Rs)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -522,33 +440,18 @@ const SummaryView = forwardRef(({
                   const kpis = kpisByFY.get(fy);
                   return (
                     <tr key={fy} className="bg-card">
-                      <td className="px-4 py-3 text-sm font-semibold text-foreground sticky left-0 bg-card">
-                        {fy}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {kpis?.totalSubmitted?.families ?? 0} | {kpis?.totalSubmitted?.members ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {kpis?.totalAcknowledged?.families ?? 0} | {kpis?.totalAcknowledged?.members ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {kpis?.pendingAcknowledgement?.families ?? 0} | {kpis?.pendingAcknowledgement?.members ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground font-semibold">
-                        {formatAmount(kpis?.totalVantigaAmountCollected)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground font-semibold">
-                        {formatAmount(kpis?.totalMathMaryadaAmountCollected)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground font-semibold">
-                        {formatAmount(kpis?.totalAmountCollected)}
-                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-foreground sticky left-0 bg-card">{fy}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{kpis?.totalSubmitted?.families ?? 0} | {kpis?.totalSubmitted?.members ?? 0}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{kpis?.totalAcknowledged?.families ?? 0} | {kpis?.totalAcknowledged?.members ?? 0}</td>
+                      <td className="px-4 py-3 text-sm text-foreground">{kpis?.pendingAcknowledgement?.families ?? 0} | {kpis?.pendingAcknowledgement?.members ?? 0}</td>
+                      <td className="px-4 py-3 text-sm text-foreground font-semibold">{formatAmount(kpis?.totalVantigaAmountCollected)}</td>
+                      <td className="px-4 py-3 text-sm text-foreground font-semibold">{formatAmount(kpis?.totalAmountCollected)}</td>
                     </tr>
                   );
                 })}
                 {orderedFYs.length === 0 && (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={7}>
+                    <td className="px-4 py-6 text-sm text-muted-foreground" colSpan={6}>
                       No data available
                     </td>
                   </tr>
@@ -574,9 +477,7 @@ const SummaryView = forwardRef(({
               ) : (
                 <>
                   <p className="text-2xl font-bold text-card-foreground">{kpi.families}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Members: {kpi.members}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Members: {kpi.members}</p>
                 </>
               )}
             </div>
@@ -585,7 +486,6 @@ const SummaryView = forwardRef(({
       )}
 
       <div className={isTreasurer ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8' : 'grid grid-cols-1 gap-6 mt-8'}>
-        {!isTreasurer && null}
         {isTreasurer && (
           <div className="bg-card rounded-lg border border-border shadow-sm p-6">
             <h3 className="text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
@@ -644,18 +544,17 @@ const SummaryView = forwardRef(({
             <Icon name="TrendingUp" size={20} />
             Month-wise Trend
           </h3>
-          <p className="text-xs text-muted-foreground mb-4">Acknowledged amounts split by Vantiga and Math Maryada</p>
+          <p className="text-xs text-muted-foreground mb-4">Acknowledged Vantiga amounts by month</p>
 
-          {monthlyTrendData.some((d) => d.vantigaAmount > 0 || d.mathMaryadaAmount > 0) ? (
+          {monthlyTrendData.some((d) => d.vantigaAmount > 0) ? (
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={monthlyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `₹${Math.round(value / 1000)}k`} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `Rs${Math.round(value / 1000)}k`} />
                 <Tooltip formatter={(value, name) => [formatAmount(value), name]} />
                 <Legend />
-                <Bar dataKey="vantigaAmount" name="Vantiga" stackId="entryType" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="mathMaryadaAmount" name="Math Maryada" stackId="entryType" fill="#f97316" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="vantigaAmount" name="Vantiga" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -734,6 +633,7 @@ const SummaryView = forwardRef(({
                 entryMembers?.[0]?.name ||
                 entryMembers?.[0]?.full_name ||
                 'Unknown';
+
               return (
                 <div
                   key={entry?.entryId || entry?.id}
@@ -745,9 +645,7 @@ const SummaryView = forwardRef(({
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-foreground">{formatAmount(totalAmount)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(getEntryDate(entry))}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{formatDate(getEntryDate(entry))}</p>
                   </div>
                 </div>
               );

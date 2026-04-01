@@ -257,6 +257,10 @@ const NewEntryForm = () => {
       throw new Error('Only rejected entries can be edited.');
     }
 
+    if (data?.entry_type === 'Math Maryada') {
+      throw new Error('Math Maryada entries are no longer supported in the application UI.');
+    }
+
     const edits = Number(data?.edit_count || 0);
     if (edits >= 2) {
       throw new Error('Maximum edit limit reached for this entry.');
@@ -348,7 +352,7 @@ const NewEntryForm = () => {
     };
   }, [isRejectedEditMode, userProfile?.sabhaId, loadRejectedEntryForEdit, navigate]);
 
-  const isMathMaryada = formData?.entryType === 'Math Maryada';
+  const isMathMaryada = false;
 
   // -----------------------
   // DUPLICATE CHECK (UPDATED): Now reads from Supabase, NOT localStorage.
@@ -581,8 +585,7 @@ const NewEntryForm = () => {
   ];
 
   const entryTypeOptions = [
-    { value: 'Vantiga', label: 'Vantiga' },
-    { value: 'Math Maryada', label: 'Math Maryada' }
+    { value: 'Vantiga', label: 'Vantiga' }
   ];
 
   const AGE_PATTERN = /^\d+$/;
@@ -647,7 +650,7 @@ const NewEntryForm = () => {
       }
     }
 
-    if (field === 'gotra' && !isMathMaryada && !normalizedValue) {
+    if (field === 'gotra' && !normalizedValue) {
       return 'Gotra is required';
     }
 
@@ -673,59 +676,6 @@ const NewEntryForm = () => {
   };
 
   const handleSelectChange = (name, value) => {
-    if (name === 'entryType') {
-      const nextFormData = {
-        ...formData,
-        entryType: value,
-        ...(value === 'Math Maryada'
-          ? {
-              optShowAmountInDirectory: 'No',
-              optShowMobileInDirectory: 'No',
-              optShowEmailInDirectory: 'No'
-            }
-          : {})
-      };
-
-      setFormData(nextFormData);
-      setTouchedFields((prev) => ({ ...prev, entryType: true }));
-      setErrors((prev) => {
-        const nextErrors = {
-          ...prev,
-          entryType: validateTopLevelField('entryType', value, nextFormData)
-        };
-        if (value === 'Math Maryada') {
-          Object.keys(nextErrors)
-            .filter((key) => key.includes('_gotra'))
-            .forEach((key) => delete nextErrors[key]);
-        }
-        return nextErrors;
-      });
-
-      if (value === 'Math Maryada') {
-        setTouchedFields((prev) => {
-          const nextTouched = { ...prev };
-          Object.keys(nextTouched)
-            .filter((key) => key.includes('_gotra'))
-            .forEach((key) => delete nextTouched[key]);
-          return nextTouched;
-        });
-        setMembers((prev) => {
-          const primaryMember = prev?.[0] || {};
-          return [{
-            id: 1,
-            firstName: primaryMember?.firstName || '',
-            lastName: primaryMember?.lastName || '',
-            age: primaryMember?.age || '',
-            gender: primaryMember?.gender || 'Male',
-            gotra: '',
-            amount: primaryMember?.amount || '',
-            relationship: 'Member'
-          }];
-        });
-      }
-      return;
-    }
-
     const nextFormData = { ...formData, [name]: value };
     setFormData(nextFormData);
     setTouchedFields((prev) => ({ ...prev, [name]: true }));
@@ -780,7 +730,6 @@ const NewEntryForm = () => {
   };
 
   const addMember = () => {
-    if (isMathMaryada) return;
     const additionalMembersCount = Math.max(members?.length - 1, 0);
     if (additionalMembersCount >= MAX_ADDITIONAL_MEMBERS) {
       return;
@@ -845,11 +794,9 @@ const NewEntryForm = () => {
         }
       });
 
-      if (!isMathMaryada) {
-        const gotraError = validateMemberField(member, index, 'gotra');
-        if (gotraError) {
-          newErrors[`member_${index}_gotra`] = gotraError;
-        }
+      const gotraError = validateMemberField(member, index, 'gotra');
+      if (gotraError) {
+        newErrors[`member_${index}_gotra`] = gotraError;
       }
     });
 
@@ -872,9 +819,7 @@ const NewEntryForm = () => {
         nextTouched[`member_${index}_lastName`] = true;
         nextTouched[`member_${index}_age`] = true;
         nextTouched[`member_${index}_amount`] = true;
-        if (!isMathMaryada) {
-          nextTouched[`member_${index}_gotra`] = true;
-        }
+        nextTouched[`member_${index}_gotra`] = true;
       });
       return nextTouched;
     });
@@ -922,11 +867,11 @@ const NewEntryForm = () => {
       }
 
       if (isRejectedEditMode && rejectedEditEntryId) {
-        const membersToUpsert = (isMathMaryada ? members.slice(0, 1) : members).map((m, idx) => ({
+        const membersToUpsert = members.map((m, idx) => ({
           full_name: `${m?.firstName || ''} ${m?.lastName || ''}`.trim(),
           age: parseInt(m?.age, 10),
           gender: m?.gender,
-          gotra: isMathMaryada ? null : (m?.gotra || null),
+          gotra: m?.gotra || null,
           amount: Number(m?.amount),
           is_primary_payer: idx === 0,
         }));
@@ -940,9 +885,9 @@ const NewEntryForm = () => {
           p_address_multiline: formData?.address,
           p_payer_mobile: formData?.payerMobile,
           p_payer_email: formData?.payerEmail,
-          p_opt_show_amount_in_directory: !isMathMaryada && formData?.optShowAmountInDirectory === 'Yes',
-          p_opt_show_mobile_in_directory: !isMathMaryada && formData?.optShowMobileInDirectory === 'Yes',
-          p_opt_show_email_in_directory: !isMathMaryada && formData?.optShowEmailInDirectory === 'Yes',
+          p_opt_show_amount_in_directory: formData?.optShowAmountInDirectory === 'Yes',
+          p_opt_show_mobile_in_directory: formData?.optShowMobileInDirectory === 'Yes',
+          p_opt_show_email_in_directory: formData?.optShowEmailInDirectory === 'Yes',
           p_members: membersToUpsert,
         });
 
@@ -970,9 +915,9 @@ const NewEntryForm = () => {
         address_multiline: formData?.address,
         payer_mobile: formData?.payerMobile,
         payer_email: formData?.payerEmail,
-        opt_show_amount_in_directory: !isMathMaryada && formData?.optShowAmountInDirectory === "Yes",
-        opt_show_mobile_in_directory: !isMathMaryada && formData?.optShowMobileInDirectory === "Yes",
-        opt_show_email_in_directory: !isMathMaryada && formData?.optShowEmailInDirectory === "Yes",
+        opt_show_amount_in_directory: formData?.optShowAmountInDirectory === "Yes",
+        opt_show_mobile_in_directory: formData?.optShowMobileInDirectory === "Yes",
+        opt_show_email_in_directory: formData?.optShowEmailInDirectory === "Yes",
       };
 
       const { data: familyRow, error: familyErr } = await supabase
@@ -986,14 +931,14 @@ const NewEntryForm = () => {
       const familyId = familyRow?.id;
 
       // 2) Insert FAMILY MEMBERS
-      const membersToInsert = isMathMaryada ? members.slice(0, 1) : members;
+      const membersToInsert = members;
 
       const membersInsert = membersToInsert.map((m, idx) => ({
         family_id: familyId,
         full_name: `${m?.firstName} ${m?.lastName}`.trim(),
         age: parseInt(m?.age, 10),
         gender: m?.gender,
-        gotra: isMathMaryada ? null : (m?.gotra || null),
+        gotra: m?.gotra || null,
         amount: Number(m?.amount),
         is_primary_payer: idx === 0, // Member 1 is primary payer
       }));
