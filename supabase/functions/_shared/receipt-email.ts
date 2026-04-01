@@ -619,7 +619,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
       size: 18,
       font: titleFont,
     });
-    page.drawText(payload.sabhaName, {
+    page.drawText(`Local Sabha: ${payload.sabhaName}`, {
       x: left + horizontalPad,
       y: summary.top - 48,
       size: 10.5,
@@ -874,7 +874,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     size: 15,
     font: titleFont,
   });
-  page.drawText(payload.sabhaName, {
+  page.drawText(`Local Sabha: ${payload.sabhaName}`, {
     x: left + horizontalPad,
     y: summary.top - 36,
     size: 10,

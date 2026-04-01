@@ -5,6 +5,8 @@
 ```bash
 supabase functions deploy send-receipt-email --no-verify-jwt
 supabase functions deploy retry-receipt-email --no-verify-jwt
+supabase functions deploy send-submission-ack-email --no-verify-jwt
+supabase functions deploy retry-submission-ack-email --no-verify-jwt
 supabase functions deploy send-rejection-email --no-verify-jwt
 supabase functions deploy retry-rejection-email --no-verify-jwt
 supabase functions deploy generate-receipt-pdf
@@ -40,6 +42,8 @@ supabase db push
 This creates:
 - `public.receipt_email_dispatch`
 - trigger `trg_enqueue_receipt_email_dispatch` on `public.vantiga_entries`
+- `public.submission_ack_email_dispatch`
+- trigger `trg_enqueue_submission_ack_email_dispatch` on `public.vantiga_entries`
 - `public.rejection_email_dispatch`
 - trigger `trg_enqueue_rejection_email_dispatch` on `public.vantiga_entries`
 
@@ -56,6 +60,16 @@ Create a Supabase Database Webhook in Dashboard:
 The function itself filters events and only sends when `receipt_no` is newly set.
 
 Create a second Supabase Database Webhook for rejection emails:
+
+- Table: `public.vantiga_entries`
+- Events: `INSERT`, `UPDATE`
+- Endpoint: `https://<project-ref>.supabase.co/functions/v1/send-submission-ack-email`
+- Headers:
+  - `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
+
+The function filters events and only sends when a non-cash entry is newly submitted.
+
+Create a third Supabase Database Webhook for rejection emails:
 
 - Table: `public.vantiga_entries`
 - Events: `UPDATE`
@@ -82,6 +96,19 @@ Create a scheduled HTTP call (every 10-15 minutes) to:
 
 Add a second scheduled HTTP call (every 10-15 minutes) to:
 
+- `POST https://<project-ref>.supabase.co/functions/v1/retry-submission-ack-email`
+- Header: `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
+- Body:
+
+```json
+{
+  "limit": 25,
+  "max_attempts": 5
+}
+```
+
+Add a third scheduled HTTP call (every 10-15 minutes) to:
+
 - `POST https://<project-ref>.supabase.co/functions/v1/retry-rejection-email`
 - Header: `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
 - Body:
@@ -99,7 +126,11 @@ Add a second scheduled HTTP call (every 10-15 minutes) to:
 2. Confirm row appears in `receipt_email_dispatch`.
 3. Confirm row status becomes `sent`.
 4. Confirm recipient gets email with `receipt-<receipt_no>.pdf` attachment.
-5. Reject a submitted entry with payer email present.
-6. Confirm row appears in `rejection_email_dispatch`.
+5. Create a non-cash entry with payer email present.
+6. Confirm row appears in `submission_ack_email_dispatch`.
 7. Confirm row status becomes `sent`.
-8. Confirm recipient gets a rejection email showing the selected rejection reason.
+8. Confirm recipient gets a submission acknowledgement email.
+9. Reject a submitted entry with payer email present.
+10. Confirm row appears in `rejection_email_dispatch`.
+11. Confirm row status becomes `sent`.
+12. Confirm recipient gets a rejection email showing the selected rejection reason.

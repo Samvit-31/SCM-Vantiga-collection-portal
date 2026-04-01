@@ -374,6 +374,12 @@ verify_jwt = false
 [functions.retry-receipt-email]
 verify_jwt = false
 
+[functions.send-submission-ack-email]
+verify_jwt = false
+
+[functions.retry-submission-ack-email]
+verify_jwt = false
+
 [functions.send-rejection-email]
 verify_jwt = false
 
