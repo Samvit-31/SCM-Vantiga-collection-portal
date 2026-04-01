@@ -5,6 +5,8 @@
 ```bash
 supabase functions deploy send-receipt-email --no-verify-jwt
 supabase functions deploy retry-receipt-email --no-verify-jwt
+supabase functions deploy send-rejection-email --no-verify-jwt
+supabase functions deploy retry-rejection-email --no-verify-jwt
 supabase functions deploy generate-receipt-pdf
 ```
 
@@ -25,6 +27,8 @@ supabase secrets set \
   RECEIPT_WEBHOOK_SECRET=...
 ```
 
+The rejection-email flow reuses the same Resend sender and webhook secret.
+
 ## 3) Apply migration
 
 Run your normal migration command so table + queue trigger are created:
@@ -36,6 +40,8 @@ supabase db push
 This creates:
 - `public.receipt_email_dispatch`
 - trigger `trg_enqueue_receipt_email_dispatch` on `public.vantiga_entries`
+- `public.rejection_email_dispatch`
+- trigger `trg_enqueue_rejection_email_dispatch` on `public.vantiga_entries`
 
 ## 4) Create Database Webhook
 
@@ -48,6 +54,16 @@ Create a Supabase Database Webhook in Dashboard:
   - `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
 
 The function itself filters events and only sends when `receipt_no` is newly set.
+
+Create a second Supabase Database Webhook for rejection emails:
+
+- Table: `public.vantiga_entries`
+- Events: `UPDATE`
+- Endpoint: `https://<project-ref>.supabase.co/functions/v1/send-rejection-email`
+- Headers:
+  - `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
+
+The function filters events and only sends when the row newly transitions to `REJECTED`.
 
 ## 5) Add retry schedule (recommended)
 
@@ -64,9 +80,26 @@ Create a scheduled HTTP call (every 10-15 minutes) to:
 }
 ```
 
+Add a second scheduled HTTP call (every 10-15 minutes) to:
+
+- `POST https://<project-ref>.supabase.co/functions/v1/retry-rejection-email`
+- Header: `x-webhook-secret: <RECEIPT_WEBHOOK_SECRET>`
+- Body:
+
+```json
+{
+  "limit": 25,
+  "max_attempts": 5
+}
+```
+
 ## 6) Smoke test
 
 1. Create cash entry so receipt number is generated.
 2. Confirm row appears in `receipt_email_dispatch`.
 3. Confirm row status becomes `sent`.
 4. Confirm recipient gets email with `receipt-<receipt_no>.pdf` attachment.
+5. Reject a submitted entry with payer email present.
+6. Confirm row appears in `rejection_email_dispatch`.
+7. Confirm row status becomes `sent`.
+8. Confirm recipient gets a rejection email showing the selected rejection reason.

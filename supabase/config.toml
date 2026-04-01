@@ -374,6 +374,12 @@ verify_jwt = false
 [functions.retry-receipt-email]
 verify_jwt = false
 
+[functions.send-rejection-email]
+verify_jwt = false
+
+[functions.retry-rejection-email]
+verify_jwt = false
+
 [functions.generate-receipt-pdf]
 verify_jwt = false
 

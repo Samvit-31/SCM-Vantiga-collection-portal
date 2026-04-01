@@ -501,11 +501,23 @@ const ReceiptPreview = ({ standalone = false }) => {
               </div>
             </div>
 
-            <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
-              Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
-              <span className="font-semibold">, being voluntary contribution towards {isMathMaryada ? 'Math Maryada' : 'Vantiga'} for Year:</span>{' '}
-              <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
-            </div>
+
+            {isMathMaryada ? (
+              <div className="px-6 py-2.5 border-b border-slate-300 text-base font-semibold">
+                Received From : <span className="font-normal">{primaryPayerName}</span>{' '}
+                <span className="font-semibold"> for Year:</span>{' '}
+                <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
+              </div>
+            ) : (
+              <div className="px-6 py-2.5 border-b border-slate-300 flex items-start justify-between gap-4 text-base font-semibold">
+                <div>
+                  Received From : <span className="font-normal">{primaryPayerName}</span>
+                </div>
+                <div className="text-right whitespace-nowrap">
+                  Vantiga for the year: <span className="text-sm font-mono font-normal">{entry?.fy || '-'}</span>
+                </div>
+              </div>
+            )}
 
             <div className="border-b border-slate-300 px-6 py-2 space-y-2">
               <div className="text-base font-semibold">
@@ -578,8 +590,15 @@ const ReceiptPreview = ({ standalone = false }) => {
 
             {!isMathMaryada && (
               <div className="border-t border-slate-300 px-6 py-2.5 bg-slate-100">
-                <div className="text-base font-semibold mb-2">Opt to Show in Vantiga Directory:</div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm mb-2.5">
+                <div className="flex justify-center mb-3">
+                  <div className="text-sm text-center leading-snug">
+                    <span className="inline-block bg-yellow-200 border border-yellow-300 px-3 py-1 rounded-md">
+                      The Vantiga Payer has confirmed the following preferences for display in the{' '}
+                      <span className="font-semibold">SCM Vantiga Directory:</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                   <div>
                     <span className="font-semibold">Vantiga Amount:</span> {optShowAmount}
                   </div>
@@ -589,9 +608,6 @@ const ReceiptPreview = ({ standalone = false }) => {
                   <div>
                     <span className="font-semibold">Email ID:</span> {optShowEmail}
                   </div>
-                </div>
-                <div className="inline-block text-sm font-semibold bg-yellow-200 px-2 py-1 rounded">
-                  Vantiga Payer has opted above information to be shown in Vantiga Directory with Yes or No
                 </div>
               </div>
             )}

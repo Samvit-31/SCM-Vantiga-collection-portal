@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { RECEIPT_LOGO_BASE64 } from "./embedded-logo.ts";
+import { RECEIPT_HEADER_BASE64 } from "./embedded-receipt-header.ts";
 
 export type ReceiptDispatchStatus = "pending" | "processing" | "sent" | "failed";
 
@@ -63,17 +63,17 @@ If you have any questions, please contact your Sabha representative.
 `;
 }
 
-let cachedReceiptLogoBytes: Uint8Array | null = null;
+let cachedReceiptHeaderBytes: Uint8Array | null = null;
 
-async function loadReceiptLogoBytes(): Promise<Uint8Array | null> {
-  if (cachedReceiptLogoBytes) return cachedReceiptLogoBytes;
+async function loadReceiptHeaderBytes(): Promise<Uint8Array | null> {
+  if (cachedReceiptHeaderBytes) return cachedReceiptHeaderBytes;
   try {
-    const binary = atob(RECEIPT_LOGO_BASE64);
+    const binary = atob(RECEIPT_HEADER_BASE64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i += 1) {
       bytes[i] = binary.charCodeAt(i);
     }
-    cachedReceiptLogoBytes = bytes;
+    cachedReceiptHeaderBytes = bytes;
     return bytes;
   } catch {
     return null;
@@ -480,6 +480,62 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     page.drawText(text, { x: x - textWidth, y: yText, size: fontSize, font });
   };
 
+  const drawCenteredText = (
+    text: string,
+    centerX: number,
+    yText: number,
+    fontSize: number,
+    bold = false,
+  ) => {
+    const font = bold ? titleFont : bodyFont;
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    page.drawText(text, {
+      x: centerX - (textWidth / 2),
+      y: yText,
+      size: fontSize,
+      font,
+    });
+  };
+
+  const drawHighlightedCenterCallout = (
+    lines: Array<{ text: string; size: number; bold?: boolean }>,
+    topY: number,
+    options?: { gap?: number; paddingX?: number; paddingY?: number },
+  ) => {
+    const gap = options?.gap ?? 5;
+    const paddingX = options?.paddingX ?? 8;
+    const paddingY = options?.paddingY ?? 3;
+    let cursorY = topY;
+
+    lines.forEach((line) => {
+      const font = line.bold ? titleFont : bodyFont;
+      const textWidth = font.widthOfTextAtSize(line.text, line.size);
+      const lineHeight = line.size + paddingY * 2;
+      const rectWidth = textWidth + paddingX * 2;
+      const rectX = left + (contentWidth - rectWidth) / 2;
+      const rectY = cursorY - lineHeight;
+
+      page.drawRectangle({
+        x: rectX,
+        y: rectY,
+        width: rectWidth,
+        height: lineHeight,
+        color: rgb(0.99, 0.93, 0.62),
+        borderColor: rgb(0.92, 0.84, 0.34),
+        borderWidth: 0.8,
+      });
+      drawCenteredText(
+        line.text,
+        left + contentWidth / 2,
+        rectY + paddingY + ((lineHeight - paddingY * 2 - line.size) / 2) + 1,
+        line.size,
+        Boolean(line.bold),
+      );
+
+      cursorY = rectY - gap;
+    });
+  };
+
   const drawWrapped = (
     text: string,
     x: number,
@@ -509,16 +565,51 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     return lines.length;
   };
 
+  const drawWrappedRight = (
+    text: string,
+    rightX: number,
+    yTop: number,
+    maxWidth: number,
+    fontSize: number,
+    lineHeight: number,
+    bold = false,
+  ) => {
+    const font = bold ? titleFont : bodyFont;
+    const words = String(text || "-").split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(next, fontSize) <= maxWidth) {
+        current = next;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    lines.forEach((line, idx) => {
+      const textWidth = font.widthOfTextAtSize(line, fontSize);
+      page.drawText(line, {
+        x: rightX - textWidth,
+        y: yTop - idx * lineHeight,
+        size: fontSize,
+        font,
+      });
+    });
+    return lines.length;
+  };
+
   const drawMathMaryadaPreviewStyleLayout = () => {
     const summary = row(68);
     drawSectionBox(summary.top, summary.height);
-    page.drawText("Digital Math Maryada Receipt", {
+    page.drawText("Math Maryada Receipt", {
       x: left + horizontalPad,
       y: summary.top - 24,
       size: 18,
       font: titleFont,
     });
-    page.drawText(`Collecting Local Sabha: ${payload.sabhaName}`, {
+    page.drawText(payload.sabhaName, {
       x: left + horizontalPad,
       y: summary.top - 48,
       size: 10.5,
@@ -536,7 +627,7 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
       size: 11,
       font: titleFont,
     });
-    const receivedPrefix = `${payload.payerName} for the purpose of Math Maryada for Year:`;
+    const receivedPrefix = `${payload.payerName}, being voluntary contribution towards Math Maryada for Year:`;
     page.drawText(receivedPrefix, {
       x: left + 118,
       y: received.top - 26,
@@ -681,51 +772,70 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     borderWidth: 1,
   });
 
-  const header = row(84);
+  const headerBytes = await loadReceiptHeaderBytes();
+  const headerImage = headerBytes ? await pdfDoc.embedPng(headerBytes) : null;
+  const headerInsetX = 8;
+  const headerInsetTop = 6;
+  const headerInsetBottom = 6;
+  const headerImageWidth = contentWidth - headerInsetX * 2;
+  const headerImageHeight = headerImage
+    ? (headerImage.height * headerImageWidth) / headerImage.width
+    : 0;
+  const headerHeight = headerImage
+    ? headerImageHeight + headerInsetTop + headerInsetBottom
+    : 84;
+
+  const header = row(headerHeight);
   drawSectionBox(header.top, header.height);
-  const logoBytes = await loadReceiptLogoBytes();
-  if (logoBytes) {
-    const logo = await pdfDoc.embedPng(logoBytes);
-    page.drawImage(logo, {
-      x: left + horizontalPad,
-      y: header.top - 56,
-      width: 40,
-      height: 40,
+  if (headerImage) {
+    page.drawImage(headerImage, {
+      x: left + headerInsetX,
+      y: header.top - headerInsetTop - headerImageHeight,
+      width: headerImageWidth,
+      height: headerImageHeight,
+    });
+  } else {
+    page.drawText("SHRI CHITRAPUR MATH - Shirali", {
+      x: left + (contentWidth / 2) - 110,
+      y: header.top - 24,
+      size: 18,
+      font: titleFont,
+      color: rgb(0.05, 0.05, 0.05),
+    });
+    page.drawText("Shrimat Swami Pandurangashram Marg,", {
+      x: left + (contentWidth / 2) - 110,
+      y: header.top - 42,
+      size: 10,
+      font: bodyFont,
+    });
+    page.drawText("Chitrapur, Shirali, Uttara Kannada Dist., Karnataka - 581 354", {
+      x: left + (contentWidth / 2) - 150,
+      y: header.top - 58,
+      size: 9.5,
+      font: bodyFont,
+    });
+    page.drawText("Phone: (08385)258368/258756 | E-mail: accts.shirali@chitrapurmath.in | GST: 29AAATS5030Q1Z0", {
+      x: left + 18,
+      y: header.top - 74,
+      size: 8.5,
+      font: bodyFont,
     });
   }
-  page.drawText("Shri Chitrapur Math", {
-    x: left + (contentWidth / 2) - 84,
-    y: header.top - 24,
-    size: 19,
-    font: titleFont,
-    color: rgb(0.05, 0.05, 0.05),
-  });
-  page.drawText("Chitrapur, Shirali, Uttara Kannada Dist. Karnataka - 581354", {
-    x: left + (contentWidth / 2) - 138,
-    y: header.top - 42,
-    size: 10,
-    font: bodyFont,
-  });
-  page.drawText("Email: accts.shirali@chitrapurmath.in    GSTN: 29AAATS5030Q1Z0", {
-    x: left + (contentWidth / 2) - 121,
-    y: header.top - 58,
-    size: 9.5,
-    font: bodyFont,
-  });
 
   if (isMathMaryada) {
     drawMathMaryadaPreviewStyleLayout();
 
-    const signers = row(52);
+    const signers = row(60);
     drawSectionBox(signers.top, signers.height);
     const leftSignerX = left + horizontalPad;
-    const rightLabel = "Treasurer Name:";
-    const rightLabelWidth = titleFont.widthOfTextAtSize(rightLabel, 9.5);
-    const rightSignerX = right - horizontalPad - rightLabelWidth;
-    page.drawText("Pratinidhi Name:", { x: leftSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
-    page.drawText(payload.pratinidhiName, { x: leftSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
-    page.drawText(rightLabel, { x: rightSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
-    page.drawText(payload.treasurerName, { x: rightSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
+    const leftSignerWidth = 180;
+    const rightLabel = "Treasurer:";
+    const rightSignerWidth = 130;
+    const rightSignerRightX = right - horizontalPad;
+    page.drawText("Pratinidhi:", { x: leftSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
+    drawWrapped(payload.pratinidhiName, leftSignerX, signers.top - 34, leftSignerWidth, 9.5, 11);
+    drawRightText(rightLabel, rightSignerRightX, signers.top - 18, 9.5, true);
+    drawWrappedRight(payload.treasurerName, rightSignerRightX, signers.top - 34, rightSignerWidth, 9.5, 11);
 
     const footer = row(22);
     drawSectionBox(footer.top, footer.height);
@@ -748,13 +858,13 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
 
   const summary = row(56);
   drawSectionBox(summary.top, summary.height);
-  page.drawText(isMathMaryada ? "Digital Math Maryada Receipt" : "Digital Vantiga Receipt", {
+  page.drawText(isMathMaryada ? "Math Maryada Receipt" : "Vantiga Receipt", {
     x: left + horizontalPad,
     y: summary.top - 20,
     size: 15,
     font: titleFont,
   });
-  page.drawText(`Collecting Local Sabha: ${payload.sabhaName}`, {
+  page.drawText(payload.sabhaName, {
     x: left + horizontalPad,
     y: summary.top - 36,
     size: 10,
@@ -781,20 +891,46 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
     size: 10.5,
     font: titleFont,
   });
-  const receivedPrefix = `${payload.payerName} for the purpose of ${isMathMaryada ? "Math Maryada" : "Vantiga"} for Year:`;
-  page.drawText(receivedPrefix, {
-    x: left + 92,
-    y: received.top - 18,
-    size: 10,
-    font: bodyFont,
-  });
-  const receivedPrefixWidth = bodyFont.widthOfTextAtSize(receivedPrefix, 10);
-  page.drawText(payload.fy, {
-    x: left + 92 + receivedPrefixWidth + 4,
-    y: received.top - 18,
-    size: 10,
-    font: monoFont,
-  });
+  if (isMathMaryada) {
+    const receivedPrefix = `${payload.payerName}, being voluntary contribution towards Math Maryada for Year: `;
+    page.drawText(receivedPrefix, {
+      x: left + 92,
+      y: received.top - 18,
+      size: 10,
+      font: bodyFont,
+    });
+    const receivedPrefixWidth = bodyFont.widthOfTextAtSize(receivedPrefix, 10);
+    page.drawText(payload.fy, {
+      x: left + 92 + receivedPrefixWidth + 4,
+      y: received.top - 18,
+      size: 10,
+      font: monoFont,
+    });
+  } else {
+    page.drawText(payload.payerName, {
+      x: left + 92,
+      y: received.top - 18,
+      size: 10,
+      font: bodyFont,
+    });
+
+    const fyValueWidth = monoFont.widthOfTextAtSize(payload.fy, 10);
+    const fyLabel = "Vantiga for the year:";
+    const fyLabelWidth = titleFont.widthOfTextAtSize(fyLabel, 10);
+    const fyBaseX = right - horizontalPad - fyLabelWidth - 4 - fyValueWidth;
+    page.drawText(fyLabel, {
+      x: fyBaseX,
+      y: received.top - 18,
+      size: 10,
+      font: titleFont,
+    });
+    page.drawText(payload.fy, {
+      x: fyBaseX + fyLabelWidth + 4,
+      y: received.top - 18,
+      size: 10,
+      font: monoFont,
+    });
+  }
 
   const contact = row(56);
   drawSectionBox(contact.top, contact.height);
@@ -921,59 +1057,49 @@ export async function buildReceiptPdf(payload: ReceiptPayload): Promise<string> 
   });
 
   if (!isMathMaryada) {
-    const directory = row(62);
+    const directory = row(66);
     drawSectionBox(directory.top, directory.height, true);
-    page.drawText("Opt to Show in Vantiga Directory:", {
-      x: left + horizontalPad,
-      y: directory.top - 16,
-      size: 10,
-      font: titleFont,
-    });
+    drawHighlightedCenterCallout(
+      [
+        {
+          text: "The Vantiga Payer has confirmed the following preferences for display in the SCM Vantiga Directory:",
+          size: 8.6,
+        },
+      ],
+      directory.top - 16,
+      { gap: 0, paddingX: 8, paddingY: 3 },
+    );
     page.drawText(`Vantiga Amount: ${payload.optShowAmountInDirectory}`, {
       x: left + horizontalPad,
-      y: directory.top - 32,
+      y: directory.top - 48,
       size: 9.5,
       font: bodyFont,
     });
     page.drawText(`Mobile Number: ${payload.optShowMobileInDirectory}`, {
       x: left + 190,
-      y: directory.top - 32,
+      y: directory.top - 48,
       size: 9.5,
       font: bodyFont,
     });
     page.drawText(`Email ID: ${payload.optShowEmailInDirectory}`, {
       x: left + 355,
-      y: directory.top - 32,
-      size: 9.5,
-      font: bodyFont,
-    });
-    page.drawRectangle({
-      x: left + horizontalPad,
-      y: directory.top - 53,
-      width: contentWidth - 2 * horizontalPad,
-      height: 14,
-      color: rgb(0.99, 0.93, 0.62),
-      borderColor: rgb(0.92, 0.84, 0.34),
-      borderWidth: 0.8,
-    });
-    page.drawText("Consent Statement comes here. To be vetted/provided by legal team", {
-      x: left + horizontalPad + 4,
-      y: directory.top - 49,
+      y: directory.top - 48,
       size: 8.5,
       font: bodyFont,
     });
   }
 
-  const signers = row(52);
+  const signers = row(60);
   drawSectionBox(signers.top, signers.height);
   const leftSignerX = left + horizontalPad;
-  const rightLabel = "Treasurer Name:";
-  const rightLabelWidth = titleFont.widthOfTextAtSize(rightLabel, 9.5);
-  const rightSignerX = right - horizontalPad - rightLabelWidth;
-  page.drawText("Pratinidhi Name:", { x: leftSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
-  page.drawText(payload.pratinidhiName, { x: leftSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
-  page.drawText(rightLabel, { x: rightSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
-  page.drawText(payload.treasurerName, { x: rightSignerX, y: signers.top - 34, size: 9.5, font: bodyFont });
+  const leftSignerWidth = 180;
+  const rightLabel = "Treasurer:";
+  const rightSignerWidth = 145;
+  const rightSignerRightX = right - horizontalPad;
+  page.drawText("Pratinidhi:", { x: leftSignerX, y: signers.top - 18, size: 9.5, font: titleFont });
+  drawWrapped(payload.pratinidhiName, leftSignerX, signers.top - 34, leftSignerWidth, 9.5, 11);
+  drawRightText(rightLabel, rightSignerRightX, signers.top - 18, 9.5, true);
+  drawWrappedRight(payload.treasurerName, rightSignerRightX, signers.top - 34, rightSignerWidth, 9.5, 11);
 
   const footer = row(22);
   drawSectionBox(footer.top, footer.height);
