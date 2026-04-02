@@ -358,10 +358,12 @@ const SabhaDashboard = () => {
   };
 
   const roleLabel = userProfile?.role === 'treasurer' ? 'Treasurer' : 'Pratinidhi';
-  const sabhaLineParts = [];
-  if (userProfile?.sabha) sabhaLineParts.push(userProfile.sabha);
-  sabhaLineParts.push(roleLabel);
-  const sabhaLine = sabhaLineParts.join(' • ');
+  const dashboardTitle =
+    userProfile?.role === 'pratinidhi'
+      ? 'Sabha Dashboard - Pratinidhi'
+      : userProfile?.role === 'treasurer'
+      ? 'Sabha Dashboard - Treasurer'
+      : 'Sabha Dashboard';
   const isSummaryTab = activeTab === 'summary' && userProfile?.role === 'treasurer';
   const isCompareMode = summaryMode === 'compare';
   const summaryFYSelection = isCompareMode ? summaryFYs : [selectedFY];
@@ -387,12 +389,12 @@ const SabhaDashboard = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
               <h2 className="text-3xl font-bold text-card-foreground mb-2">
-                Sabha Dashboard
+                {dashboardTitle}
               </h2>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="MapPin" size={16} />
-                <p className="text-sm">
-                  {sabhaLine}
+                <p className="text-base font-medium">
+                  {userProfile?.sabha || roleLabel}
                 </p>
               </div>
             </div>

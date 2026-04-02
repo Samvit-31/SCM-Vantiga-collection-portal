@@ -21,6 +21,7 @@ interface RejectionPayload {
   payerName: string;
   sabhaName: string;
   rejectionReason: string;
+  totalAmount: number;
 }
 
 function requiredEnv(name: string): string {
@@ -44,6 +45,17 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function formatAmountIndian(value: number): string {
+  try {
+    return value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return value.toFixed(2);
+  }
 }
 
 export function createServiceClient() {
@@ -192,7 +204,8 @@ export async function fetchRejectionPayload(
         payer_email,
         family_members (
           full_name,
-          is_primary_payer
+          is_primary_payer,
+          amount
         ),
         sabhas:sabha_id (
           name
@@ -217,6 +230,10 @@ export async function fetchRejectionPayload(
     members.find((member: { full_name?: string | null; is_primary_payer?: boolean | null }) => member?.is_primary_payer)?.full_name?.trim() ||
     members[0]?.full_name?.trim() ||
     "Vantiga Member";
+  const totalAmount = members.reduce((sum, member: { amount?: number | string | null }) => {
+    const amount = Number(member?.amount || 0);
+    return sum + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
 
   return {
     entryId,
@@ -225,6 +242,7 @@ export async function fetchRejectionPayload(
     payerName,
     sabhaName: optionalTrimmed(familySabha?.name) || "-",
     rejectionReason: dispatch.rejection_reason,
+    totalAmount,
   };
 }
 
@@ -240,6 +258,7 @@ export async function sendViaResend(
       <p>Jai Shankar,</p>
       <p>Your Vantiga entry for <strong>${escapeHtml(payload.sabhaName)}</strong> has been rejected.</p>
       <p><strong>Payer Name:</strong> ${escapeHtml(payload.payerName)}<br/>
+      <strong>Amount:</strong> INR ${escapeHtml(formatAmountIndian(payload.totalAmount))}<br/>
       <strong>Reason:</strong> ${escapeHtml(payload.rejectionReason)}</p>
       <p>Please contact your Sabha representative and re-submit the entry after making the required corrections.</p>
       <p>Regards,<br/>Shri Chitrapur Math</p>
